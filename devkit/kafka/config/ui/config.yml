@@ -1,0 +1,11 @@
+# ============================================
+# Kafdrop UI Configuration
+# ============================================
+# This is a placeholder. Kafdrop works out of the box with minimal config.
+#
+# Default settings:
+#   - Server port: 8080
+#   - Kafka bootstrap: localhost:9092
+#
+# For advanced configuration, see:
+# https://github.com/obsidiandynamics/kafdrop#configuration

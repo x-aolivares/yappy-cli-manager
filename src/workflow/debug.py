@@ -49,10 +49,10 @@ def debug_local(
     info(f"Starting debug workflow for [bold]{env}[/bold]")
     print()
     info("Services that will be started:")
-    info(f"  · DB tunnel     → localhost:{cfg.db_port}")
-    info(f"  · Kafka server  → localhost:9092")
-    info(f"  · Kafdrop UI    → http://localhost:8080")
-    info(f"  · Kafka agents  → {kafka_agents_path or cfg.get('KAFKA_AGENTS_PATH', 'C:\\Development\\Workspace\\Yappy\\test\\kafka-agents')}")
+    info(f"  · DB tunnel     -> localhost:{cfg.db_port}")
+    info(f"  · Kafka server  -> localhost:9092")
+    info(f"  · Kafdrop UI    -> http://localhost:8080")
+    info(f"  · Kafka agents  -> {kafka_agents_path or cfg.get('KAFKA_AGENTS_PATH', 'C:\\Development\\Workspace\\Yappy\\test\\kafka-agents')}")
     print()
 
     info("[1/5] Checking AWS session...")
@@ -136,7 +136,7 @@ def debug_local(
 
 
 _DEFAULT_EXECUTOR = '''\
-from yappy_devkit.api import Session, DevUtils
+from src.api import Session, DevUtils
 
 
 def executor(environment: str = "dev") -> tuple:

@@ -1,18 +1,25 @@
 from pathlib import Path
 
+import tomllib
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_read_version_from_pyproject():
-    from yappy_devkit.cli import _read_version
+def _pyproject_version() -> str:
+    with open(ROOT / "pyproject.toml", "rb") as f:
+        return tomllib.load(f)["project"]["version"]
 
-    assert _read_version() == "0.11.0"
+
+def test_read_version_from_pyproject():
+    from src.cli import _read_version
+
+    assert _read_version() == _pyproject_version()
 
 
 def test_version_command_falls_back_to_pyproject(monkeypatch, capsys):
     import importlib.metadata as md
 
-    from yappy_devkit.cli import version
+    from src.cli import version
 
     def _boom(distribution_name):
         raise md.PackageNotFoundError(distribution_name)
@@ -22,12 +29,12 @@ def test_version_command_falls_back_to_pyproject(monkeypatch, capsys):
     version()
 
     out = capsys.readouterr().out
-    assert "v0.11.0" in out
+    assert f"v{_pyproject_version()}" in out
 
 
 def test_readme_title_and_docs_fixed():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert readme.startswith("# aws-cli-manager")
+    assert readme.startswith("# yappy-cli-manager")
     assert "Nueva sintaxis (Docker-like)" in readme
     assert "yappy run kafka server -d" in readme
     assert "yappy logs kafka server -f" in readme
@@ -35,7 +42,7 @@ def test_readme_title_and_docs_fixed():
 
 def test_readme_kafka_path_matches_config_default():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    from yappy_devkit.config import Config
+    from src.config import Config
 
     default = Config().kafka_path
     assert "config/kafka" not in readme

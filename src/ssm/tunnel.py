@@ -66,6 +66,8 @@ def connect(
 
     if not detach:
         info("All tunnels running. Press Ctrl+C to stop all.")
+        for proc, port in procs:
+            ssm_cmd.open_browser(f"https://localhost:{port}/swagger-ui/index.html")
         try:
             for proc, _ in procs:
                 proc.wait()
@@ -115,7 +117,6 @@ def producer(
         proc, detach,
         name="Producer tunnel",
         local_port=3000,
-        browser_url="http://localhost:3000/",
     )
 
 

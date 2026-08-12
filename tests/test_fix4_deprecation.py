@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import yappy_devkit.db.tunnel as tunnel
-import yappy_devkit.ssm.tunnel as ssm_tunnel
-import yappy_devkit.verbs.run as run_verbs
+import src.db.tunnel as tunnel
+import src.ssm.tunnel as ssm_tunnel
+import src.verbs.run as run_verbs
 
 
 def _fake_cfg():
@@ -67,7 +67,7 @@ def test_ssm_producer_hint_points_to_verb(monkeypatch, capsys):
 
 
 def test_deprecation_hints_dict_fixed():
-    from yappy_devkit.deprecation import _OLD_TO_NEW
+    from src.deprecation import _OLD_TO_NEW
 
     assert _OLD_TO_NEW["ssm producer"] == "run tunnel producer <env>"
     assert _OLD_TO_NEW["workflow executor"] == "run workflow <env>"

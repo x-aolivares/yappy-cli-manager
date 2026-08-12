@@ -1,4 +1,4 @@
-from yappy_devkit.api import Session, DevUtils
+from src.api import Session, DevUtils
 
 
 def executor(environment: str = "dev") -> tuple:

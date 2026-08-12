@@ -4,9 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import yappy_devkit.aws.session as aws_session
-import yappy_devkit.db.tunnel as tunnel
-import yappy_devkit.workflow.executor as executor_mod
+import src.aws.session as aws_session
+import src.db.tunnel as tunnel
+import src.workflow.executor as executor_mod
 
 
 def test_executor_never_prints_db_password(monkeypatch, capsys):

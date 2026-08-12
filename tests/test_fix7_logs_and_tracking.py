@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-import yappy_devkit.api.kafka as api_kafka
-import yappy_devkit.base as base
-import yappy_devkit.process_tracker as process_tracker
-import yappy_devkit.verbs.logs as logs_mod
-from yappy_devkit.verbs.logs import tail_log
+import src.api.kafka as api_kafka
+import src.base as base
+import src.process_tracker as process_tracker
+import src.verbs.logs as logs_mod
+from src.verbs.logs import tail_log
 
 
 def test_tail_log_oneshot_prints_last_n_lines(tmp_path, capsys):
@@ -71,7 +71,6 @@ def test_show_logs_follow_prints_ctrl_c_hint(monkeypatch, tmp_path, capsys):
 
 
 def test_kafka_service_detach_tracks_process_with_log_file(monkeypatch, tmp_path):
-    monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     tracked = []
     monkeypatch.setattr(api_kafka.process_tracker, "track_process", lambda **kw: tracked.append(kw))
     fake_proc = SimpleNamespace(pid=4321)
@@ -79,14 +78,14 @@ def test_kafka_service_detach_tracks_process_with_log_file(monkeypatch, tmp_path
     monkeypatch.setattr(api_kafka.time, "sleep", lambda seconds: None)
 
     core = tmp_path / "kafka-core"
-    (core / "bin" / "windows").mkdir(parents=True)
-    (core / "bin" / "windows" / "kafka-server-start.bat").write_text("")
+    (core / "libs").mkdir(parents=True)
     (core / "config" / "kraft").mkdir(parents=True)
     (core / "config" / "kraft" / "server.properties").write_text("")
 
     cfg = SimpleNamespace(
         kafka_core_path=str(core),
         kafka_ui_path=str(tmp_path / "kafka-ui"),
+        kafka_path=str(tmp_path / "kafka"),
     )
     svc = api_kafka.KafkaService(cfg)
     proc = svc.up("server", detach=True)
@@ -97,11 +96,10 @@ def test_kafka_service_detach_tracks_process_with_log_file(monkeypatch, tmp_path
     assert entry["resource"] == "kafka"
     assert entry["target"] == "server"
     assert "kafka-server-4321.log" in entry["log_file"]
-    assert (tmp_path / ".yappy" / "logs" / "kafka-server-4321.log").exists()
+    assert (tmp_path / "kafka" / "temp-logs" / "kafka-server-4321.log").exists()
 
 
 def test_kafka_service_down_untracks_process(monkeypatch, tmp_path):
-    monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     untracked = []
     monkeypatch.setattr(process_tracker, "untrack_process", lambda pid: untracked.append(pid))
     monkeypatch.setattr(
@@ -109,15 +107,16 @@ def test_kafka_service_down_untracks_process(monkeypatch, tmp_path):
         "get_tracked_processes",
         lambda resource=None, target=None: [{"pid": 4321}],
     )
-    monkeypatch.setattr(api_kafka.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0))
-
-    core = tmp_path / "kafka-core"
-    (core / "bin" / "windows").mkdir(parents=True)
-    (core / "bin" / "windows" / "kafka-server-stop.bat").write_text("")
+    monkeypatch.setattr(
+        api_kafka.subprocess,
+        "run",
+        lambda *a, **k: SimpleNamespace(returncode=0, stdout=""),
+    )
 
     svc = api_kafka.KafkaService(SimpleNamespace(
-        kafka_core_path=str(core),
+        kafka_core_path=str(tmp_path / "kafka-core"),
         kafka_ui_path=str(tmp_path / "kafka-ui"),
+        kafka_path=str(tmp_path / "kafka"),
     ))
     svc.down("server")
 

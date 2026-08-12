@@ -1,4 +1,4 @@
-# aws-cli-manager
+# yappy-cli-manager
 
 CLI toolkit para el flujo de desarrollo diario en Yappy: sesiones AWS, túneles SSM,
 conexión a bases de datos Aurora, Kafka local y más.
@@ -34,15 +34,16 @@ Descargar desde: https://docs.aws.amazon.com/systems-manager/latest/userguide/in
 Estructura esperada en disco (configurable vía `KAFKA_PATH` en `config/env.base`):
 
 ```
-{KAFKA_PATH}/kafka-core/        # bin/, config/, temp/
+{KAFKA_PATH}/kafka-core/        # bin/, config/, libs/
 {KAFKA_PATH}/kafka-ui/          # main.jar (Kafdrop)
+{KAFKA_PATH}/temp-logs/         # logs de los procesos
 ```
 
-Por defecto `KAFKA_PATH=C:\Development\kafka`:
+Por defecto Kafka se instala dentro del repo (bajo `devkit/kafka`):
 
 ```
-C:\Development\kafka\kafka-core/
-C:\Development\kafka\kafka-ui/
+C:\Development\yappy-cli-manager\devkit\kafka\kafka-core/
+C:\Development\yappy-cli-manager\devkit\kafka\kafka-ui/
 ```
 
 ### 5. Java 17+ (solo para Kafdrop UI)
@@ -53,14 +54,26 @@ java --version
 
 ---
 
-## Onboarding (nuevo dev)
+## Uso (devs)
+
+La herramienta la instala y mantiene el maintainer. **No clonés ni instalés nada.**
+
+¿Necesitás un cambio o un comando nuevo? Decile al maintainer y él lo integra.
+
+## Onboarding (maintainer)
 
 ```bash
-git clone git@github.com:adev-web/aws-cli-manager.git
-cd aws-cli-manager
+git clone git@github.com:x-aolivares/yappy-cli-manager.git
+cd yappy-cli-manager
 pip install -e .
 yappy setup               # Configura shell, verifica dependencias, crea config/env.base
 source ~/.bashrc
+```
+
+Después de cada commit:
+
+```bash
+yappy update              # git pull + pip install -e .
 ```
 
 `yappy setup` hace todo automáticamente:

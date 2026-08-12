@@ -3,9 +3,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import yappy_devkit.api.kafka as api_kafka
-import yappy_devkit.kafka.manager as manager
-import yappy_devkit.workflow.debug as debug
+import src.api.kafka as api_kafka
+import src.kafka.manager as manager
+import src.workflow.debug as debug
 
 
 def _sentinel(*args, **kwargs):
@@ -80,6 +80,7 @@ def test_kafka_service_rejects_non_windows(call, monkeypatch):
     svc = api_kafka.KafkaService(SimpleNamespace(
         kafka_core_path="C:\\kafka\\kafka-core",
         kafka_ui_path="C:\\kafka\\kafka-ui",
+        kafka_path="C:\\kafka",
     ))
     with pytest.raises(SystemExit):
         if call == "up":

@@ -52,7 +52,7 @@ class ForwarderNamespace:
                 quiet=True,
             )
             self._session._procs.append(proc)
-            info(f"Tunnel {target}:{port} → localhost:{local_port}")
+            info(f"Tunnel {target}:{port} -> localhost:{local_port}")
 
         return PFResult(ports=ports_list, target=target, load_balance=load_balance)
 

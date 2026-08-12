@@ -123,7 +123,10 @@ class Config:
 
     @property
     def kafka_path(self) -> str:
-        return self.get("KAFKA_PATH", "C:\\Development\\kafka")
+        # Project-local by default: <project_root>/devkit/kafka
+        # Override with KAFKA_PATH env var if needed
+        default = str(Path(__file__).resolve().parent.parent / "devkit" / "kafka")
+        return self.get("KAFKA_PATH", default)
 
     @property
     def kafka_core_path(self) -> str:
@@ -132,6 +135,14 @@ class Config:
     @property
     def kafka_ui_path(self) -> str:
         return str(Path(self.kafka_path) / "kafka-ui")
+
+    @property
+    def kafka_config_server(self) -> str:
+        return str(Path(self.kafka_path) / "config" / "server")
+
+    @property
+    def kafka_config_ui(self) -> str:
+        return str(Path(self.kafka_path) / "config" / "ui")
 
     @property
     def profile_path(self) -> str:

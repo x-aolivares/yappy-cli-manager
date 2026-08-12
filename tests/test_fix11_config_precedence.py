@@ -1,6 +1,6 @@
 import pytest
 
-from yappy_devkit.config import Config
+from src.config import Config
 
 _RELEVANT_KEYS = (
     "AWS_PROFILE",

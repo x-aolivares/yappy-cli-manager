@@ -1,4 +1,4 @@
-# aws-cli-manager — Agent Instructions
+# yappy-cli-manager — Agent Instructions
 
 ## Versioning
 
@@ -27,12 +27,14 @@ When a user requests an adjustment:
 
 ## Commit message format
 
-Use conventional commits:
+Use conventional commits (tipo en inglés, descripción en español):
 - `feat:` — new feature
 - `fix:` — bug fix
 - `refactor:` — code restructuring
 - `docs:` — documentation only
 - `chore:` — tooling, config, dependencies
+
+El mensaje debe ser descriptivo: sujeto corto en español (ej: `feat: rebrand a yappy-cli-manager con setup autogestionado de Kafka`) y, si el cambio es grande, un cuerpo con viñetas detallando qué se tocó.
 
 ## Config files
 

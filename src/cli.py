@@ -68,10 +68,10 @@ def version():
     """Show the installed version."""
     from importlib.metadata import version as _v
     try:
-        ver = _v("aws-cli-manager")
+        ver = _v("yappy-cli-manager")
     except Exception:
         ver = _read_version()
-    info(f"aws-cli-manager v{ver}")
+    info(f"yappy-cli-manager v{ver}")
 
 
 @app.command()
@@ -353,7 +353,7 @@ def _setup_config(config_dir: Path):
                 content = example.read_text()
                 target.write_text(content)
                 success(f"  Created {target_name} — edit values before using")
-                info(f"    → yappy edit")
+                info(f"    -> yappy edit")
 
 
 @app.command()
@@ -397,6 +397,14 @@ def setup():
     # 3. Dependencies
     print()
     info("Dependencies:")
+
+    # Upgrade pip first
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--upgrade", "pip"],
+        capture_output=True,
+    )
+    success("  pip upgraded")
+
     for cmd_name in ("aws", "session-manager-plugin"):
         result = subprocess.run(
             ["where", cmd_name] if sys.platform == "win32" else ["which", cmd_name],
@@ -407,10 +415,21 @@ def setup():
         else:
             warn(f"  {cmd_name} not found — install it first")
 
-    # 4. AWS profile
+    # 4. Kafka (auto-download if missing)
+    print()
+    info("Kafka:")
+    from .kafka.setup import setup_kafka, setup_kafka_configs
+    cfg = Config()
+    setup_kafka_configs(cfg)
+    kafka_ready = setup_kafka(cfg)
+    if kafka_ready:
+        success("  Kafka is ready")
+    else:
+        warn("  Kafka needs manual download — see messages above")
+
+    # 5. AWS profile
     print()
     info("AWS profile:")
-    cfg = Config()
     result = subprocess.run(
         ["aws", "configure", "list", "--profile", cfg.profile],
         capture_output=True, text=True, shell=True,
@@ -422,6 +441,183 @@ def setup():
 
     print()
     success("Setup complete. Run 'source ~/.bashrc' to load changes.")
+
+
+@app.command()
+def update():
+    """Pull latest code and reinstall the editable package."""
+    project_root = Path(__file__).resolve().parent.parent
+
+    info("=== Yappy Update ===")
+    print()
+
+    # 1. Pull latest code
+    info("1/2 Pulling latest code...")
+    pull = subprocess.run(
+        ["git", "pull", "--ff-only"],
+        cwd=str(project_root), text=True, check=False,
+    )
+    if pull.returncode != 0:
+        warn("  git pull failed — continuing with current code")
+
+    # 2. Reinstall editable (refresh entry points, deps, version metadata)
+    print()
+    info("2/2 Reinstalling package (pip install -e .)...")
+    install = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-e", str(project_root)],
+        capture_output=True, text=True, check=False,
+    )
+    if install.returncode != 0:
+        die(f"  Reinstall failed: {install.stderr.strip()}")
+
+    print()
+    success("Update complete")
+    version()
+
+
+@app.command()
+def uninstall(
+    purge: bool = typer.Option(False, "--purge", help="Remove ALL dependencies (may break other packages)"),
+):
+    """Remove all yappy artifacts: Kafka, logs, tracker, shell integration."""
+    import shutil
+
+    project_root = Path(__file__).resolve().parent.parent
+    yappy_home = Path.home() / ".yappy"
+
+    info("=== Yappy Uninstall ===")
+    print()
+
+    # 1. Kill running Kafka processes
+    info("Stopping Kafka processes...")
+    try:
+        result = subprocess.run(
+            ["jps", "-l"], capture_output=True, text=True, check=False,
+        )
+        killed = 0
+        for line in result.stdout.strip().splitlines():
+            if "kafka.Kafka" in line or "main.jar" in line:
+                pid = line.split()[0]
+                subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True)
+                killed += 1
+        if killed:
+            success(f"  Killed {killed} process(es)")
+        else:
+            success("  No Kafka processes running")
+    except FileNotFoundError:
+        warn("  jps not found — skipping process check")
+
+    # 2. Delete Kafka binaries (keep config/)
+    print()
+    info("Kafka files:")
+    kafka_dir = project_root / "devkit" / "kafka"
+    for name in ("kafka-core", "kafka-ui", "temp-logs"):
+        d = kafka_dir / name
+        if d.exists():
+            shutil.rmtree(d)
+            success(f"  Removed {d}")
+    if not (kafka_dir / "kafka-core").exists() and not (kafka_dir / "kafka-ui").exists():
+        success("  Binaries already clean")
+
+    # 3. Delete ~/.yappy (tracker)
+    print()
+    info("Cache and logs:")
+    if yappy_home.exists():
+        shutil.rmtree(yappy_home)
+        success(f"  Removed {yappy_home}")
+    else:
+        success("  Not found (already clean)")
+
+    # 4. Delete Kafka storage in /tmp
+    print()
+    info("Kafka storage:")
+    tmp_dirs = [
+        Path("/tmp/kraft-combined-logs"),
+        Path(os.environ.get("TEMP", "")) / "kraft-combined-logs",
+    ]
+    cleaned = False
+    for d in tmp_dirs:
+        if d.exists():
+            try:
+                shutil.rmtree(d)
+                success(f"  Removed {d}")
+                cleaned = True
+            except PermissionError:
+                warn(f"  {d} locked - reboot or delete manually")
+                cleaned = True
+    if not cleaned:
+        success("  Not found (already clean)")
+
+    # 5. Remove shell integration from .bashrc
+    print()
+    info("Shell integration:")
+    bashrc = Path.home() / ".bashrc"
+    if bashrc.exists():
+        content = bashrc.read_text()
+        marker = 'eval "$(yappy init bash)"'
+        if marker in content:
+            lines = content.splitlines()
+            lines = [l for l in lines if marker not in l]
+            bashrc.write_text("\n".join(lines) + "\n")
+            success(f"  Removed eval line from {bashrc}")
+        else:
+            success("  No eval line found (already clean)")
+    else:
+        success("  No .bashrc found")
+
+    print()
+    success("Uninstall complete. Repo is clean.")
+
+    # 6. Uninstall Python package + dependencies (last — code already in memory)
+    print()
+    info("Uninstalling Python package...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "uninstall", "yappy-cli-manager", "-y"],
+        capture_output=True, text=True, cwd=str(project_root),
+    )
+    if result.returncode == 0:
+        success("  Package removed")
+    else:
+        warn(f"  Could not uninstall: {result.stderr.strip()}")
+
+    # Remove dependencies that are no longer needed (read from pyproject.toml)
+    import tomllib
+    pyproject = project_root / "pyproject.toml"
+    deps = []
+    if pyproject.exists():
+        with open(pyproject, "rb") as f:
+            data = tomllib.load(f)
+        deps = [
+            d.split(">=")[0].split("~=")[0].split("==")[0].split("<")[0].strip()
+            for d in data.get("project", {}).get("dependencies", [])
+        ]
+
+    if deps:
+        removed = []
+        kept = []
+        for dep in deps:
+            check = subprocess.run(
+                [sys.executable, "-m", "pip", "show", dep],
+                capture_output=True, text=True,
+            )
+            if check.returncode != 0:
+                continue
+            required_by = ""
+            for line in check.stdout.splitlines():
+                if line.startswith("Required-by:"):
+                    required_by = line.split(":", 1)[1].strip()
+            if purge or not required_by:
+                subprocess.run(
+                    [sys.executable, "-m", "pip", "uninstall", dep, "-y"],
+                    capture_output=True,
+                )
+                removed.append(dep)
+            else:
+                kept.append(dep)
+        if removed:
+            success(f"  Dependencies removed: {', '.join(removed)}")
+        if kept:
+            info(f"  Dependencies kept (used by others): {', '.join(kept)}")
 
 
 if __name__ == "__main__":

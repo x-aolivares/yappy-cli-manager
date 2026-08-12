@@ -14,3 +14,19 @@ build/
 .idea/
 scripts/mysql-*.zip
 scripts/mysql-*/
+
+# Kafka binaries (download separately)
+devkit/kafka/kafka-core/
+devkit/kafka/kafka-ui/
+devkit/kafka/temp-logs/
+
+# Kafka logs
+*.log
+*.log.*
+purge.txt
+
+# DB backups
+backups/
+
+# uv lockfile (no se usa uv en este repo)
+uv.lock
