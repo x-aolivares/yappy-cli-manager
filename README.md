@@ -7,10 +7,10 @@ conexión a bases de datos Aurora, Kafka local y más.
 
 Instalar en este orden:
 
-### 1. Python 3.10+
+### 1. Python 3.14+
 
 ```
-python --version   # >= 3.10
+python --version   # >= 3.14
 ```
 
 ### 2. AWS CLI v2
