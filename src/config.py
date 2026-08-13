@@ -85,7 +85,8 @@ class Config:
         if val is None:
             raise ValueError(
                 f"Missing required config: {key} "
-                f"(check config/env.{self._env or 'base'})"
+                f"(check config/env.{self._env or 'base'} "
+                f"or set YAPPY_{key})"
             )
         return val
 
@@ -150,7 +151,7 @@ class Config:
 
     @property
     def workspace_path(self) -> str:
-        return self.get("WORKSPACE_PATH", "C:\\Development\\Workspace\\Yappy\\code")
+        return self.require("WORKSPACE_PATH")
 
     @property
     def aws_user(self) -> str | None:
