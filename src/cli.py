@@ -365,11 +365,27 @@ def setup():
     info("=== Yappy Setup ===")
     print()
 
-    # 1. Shell integration
+    # 1. Ensure Python Scripts directory is on PATH
     bashrc = Path.home() / ".bashrc"
+    scripts_dir = Path(sys.executable).parent / "Scripts"
+    scripts_posix = _win_to_posix(str(scripts_dir))
+    path_export = f'export PATH="$PATH:{scripts_posix}"'
+
+    bashrc_content = bashrc.read_text() if bashrc.exists() else ""
+    if scripts_posix in bashrc_content:
+        success(f"Python Scripts PATH already in .bashrc")
+    elif scripts_dir.exists():
+        with open(bashrc, "a") as f:
+            f.write(f"\n# yappy: Python Scripts on PATH\n{path_export}\n")
+        success(f"Added Python Scripts to PATH in .bashrc")
+        bashrc_content = bashrc.read_text()
+    else:
+        warn(f"Scripts dir not found: {scripts_dir}")
+
+    # 2. Shell integration
     eval_marker = 'eval "$(yappy init bash)"'
-    has_eval = bashrc.exists() and eval_marker in bashrc.read_text()
-    has_wrapper = bashrc.exists() and "yappy() {" in bashrc.read_text()
+    has_eval = eval_marker in bashrc_content
+    has_wrapper = "yappy() {" in bashrc_content
 
     if has_eval:
         success("Shell integration already in .bashrc")
@@ -389,12 +405,12 @@ def setup():
         warn(f"No .bashrc found at {bashrc}")
         info(f"  Add manually:\n  {eval_marker}")
 
-    # 2. Config files
+    # 3. Config files
     print()
     info("Config files:")
     _setup_config(config_dir)
 
-    # 3. Dependencies
+    # 4. Dependencies
     print()
     info("Dependencies:")
 
@@ -415,7 +431,7 @@ def setup():
         else:
             warn(f"  {cmd_name} not found — install it first")
 
-    # 4. Kafka (auto-download if missing)
+    # 5. Kafka (auto-download if missing)
     print()
     info("Kafka:")
     from .kafka.setup import setup_kafka, setup_kafka_configs
@@ -427,7 +443,7 @@ def setup():
     else:
         warn("  Kafka needs manual download — see messages above")
 
-    # 5. AWS profile
+    # 6. AWS profile
     print()
     info("AWS profile:")
     result = subprocess.run(
