@@ -143,7 +143,31 @@ yappy() {
   else
     command yappy "$@"
   fi
-}""")
+}
+
+# yappy bash completions
+_yappy_completions() {
+  local cur prev words cword
+  _init_completion 2>/dev/null || { cur="${COMP_WORDS[COMP_CWORD]}"; prev="${COMP_WORDS[COMP_CWORD-1]}"; }
+
+  local top_cmds="aws db ssm kafka workflow run stop login exec logs version config workspace home init reload setup edit update ps py-purge uninstall"
+
+  case "${COMP_WORDS[1]}" in
+    aws)      COMPREPLY=($(compgen -W "session mfa" -- "$cur")) ;;
+    db)       COMPREPLY=($(compgen -W "up refresh" -- "$cur")) ;;
+    ssm)      COMPREPLY=($(compgen -W "connect producer kafdrop databricks kill" -- "$cur")) ;;
+    kafka)    COMPREPLY=($(compgen -W "up down" -- "$cur")) ;;
+    workflow)  COMPREPLY=($(compgen -W "debug-local executor" -- "$cur")) ;;
+    run)      COMPREPLY=($(compgen -W "db tunnel kafka workflow" -- "$cur")) ;;
+    stop)     COMPREPLY=($(compgen -W "kafka tunnel" -- "$cur")) ;;
+    login)    COMPREPLY=($(compgen -W "aws mfa" -- "$cur")) ;;
+    exec)     COMPREPLY=($(compgen -W "aws" -- "$cur")) ;;
+    logs)     COMPREPLY=($(compgen -W "db kafka tunnel" -- "$cur")) ;;
+    config)   COMPREPLY=($(compgen -W "$(command yappy config 2>/dev/null | grep -oP '(?<===\s)\w+' | tr '[:upper:]' '[:lower:]')" -- "$cur")) ;;
+    *)        COMPREPLY=($(compgen -W "$top_cmds" -- "$cur")) ;;
+  esac
+}
+complete -F _yappy_completions yappy""")
 
 
 @app.command()
