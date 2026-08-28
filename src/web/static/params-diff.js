@@ -295,7 +295,7 @@ function renderChangesTable() {
        <span class="muted">(marcá los que querés llevar a destino y editá los valores a aplicar)</span>
      </div>
      <table>
-       <thead><tr><th></th><th>Ruta</th><th>Operación</th><th>Valor actual en destino</th><th>Valor a aplicar</th></tr></thead>
+       <thead><tr><th></th><th>Ruta</th><th>Operación</th><th>Valor actual en la región destino</th><th>Valor a aplicar</th></tr></thead>
        <tbody>${bodyRows}</tbody>
      </table>
    </div>
