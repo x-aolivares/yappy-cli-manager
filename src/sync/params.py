@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 
@@ -335,3 +336,118 @@ def diff_params(cfg_a, cfg_b, service: str, name: str, env_a: str, env_b: str) -
         script=_build_script(service, name, new_value, type_b, cfg_a),
         notes=[f"Hay cambios de {env_b} → {env_a}."],
     )
+
+# --- Batch reader (web "Leer Parámetros" section) -------------------------
+
+
+def _normalize_entries(entries) -> list[dict]:
+    if not isinstance(entries, list) or not entries:
+        raise ValueError("La lista de parámetros no puede estar vacía.")
+    if len(entries) > 100:
+        raise ValueError(f"Máximo 100 entradas por pedido (recibiste {len(entries)}).")
+    norms = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError(
+                "Cada entrada debe ser un objeto: "
+                "{'key': '<nombre>', 'is_secret': true|false}."
+            )
+        name = entry.get("key") or entry.get("name")
+        if not name or not str(name).strip():
+            raise ValueError(
+                "Cada entrada necesita 'key' (o 'name') no vacío."
+            )
+        norms.append(
+            {
+                "name": str(name).strip(),
+                "is_secret": bool(entry.get("is_secret", False)),
+            }
+        )
+    return norms
+
+
+def _read_ssm_batch(client, names: list[str]) -> dict[str, tuple[str, str]]:
+    """Fetch SSM parameters in chunks of 10 (AWS limit) -> name: (value, type)."""
+    found = {}
+    for i in range(0, len(names), 10):
+        resp = client.get_parameters(Names=names[i : i + 10], WithDecryption=True)
+        for item in resp.get("Parameters", []):
+            found[item["Name"]] = (item.get("Value"), item.get("Type"))
+    return found
+
+
+def read_many(cfg, entries) -> list[dict]:
+    """Read a batch of SSM parameters / Secrets Manager secrets for an environment.
+
+    Every entry is ``{"key" (or "name"), "is_secret"}``. If ``is_secret`` is
+    true the value comes from Secrets Manager, otherwise from SSM. Results are
+    returned in the same order as the input; a failure on one entry never stops
+    the rest.
+    """
+    norms = _normalize_entries(entries)
+
+    needs_ssm = any(not n["is_secret"] for n in norms)
+    needs_sms = any(n["is_secret"] for n in norms)
+    session = _boto_session(cfg.profile, cfg.region)
+    ssm = session.client("ssm") if needs_ssm else None
+    sms = session.client("secretsmanager") if needs_sms else None
+
+    ssm_names = [n["name"] for n in norms if not n["is_secret"]]
+    found_ssm: dict[str, tuple[str, str]] = {}
+    ssm_error: str | None = None
+    if ssm is not None:
+        try:
+            found_ssm = _read_ssm_batch(ssm, ssm_names)
+        except Exception as exc:  # noqa: BLE001 — report on every ssm entry
+            ssm_error = str(exc)
+
+    results: list[dict] = []
+    secret_pending: list[tuple[int, str]] = []
+    for n in norms:
+        base = {
+            "key": n["name"],
+            "is_secret": n["is_secret"],
+            "service": "secretsmanager" if n["is_secret"] else "ssm",
+            "value": None,
+            "value_type": None,
+            "ok": False,
+            "error": None,
+        }
+        if n["is_secret"]:
+            secret_pending.append((len(results), n["name"]))
+            results.append(base)
+        else:
+            if ssm_error is not None:
+                base["error"] = ssm_error
+            elif n["name"] in found_ssm:
+                value, vtype = found_ssm[n["name"]]
+                base.update(value=value, value_type=vtype, ok=True)
+            else:
+                base["error"] = "No existe"
+            results.append(base)
+
+    if sms is not None and secret_pending:
+        def _read_secret(name: str) -> tuple[str | None, str | None]:
+            try:
+                resp = sms.get_secret_value(SecretId=name)
+            except sms.exceptions.ResourceNotFoundException:
+                return None, "No existe"
+            except Exception as exc:  # noqa: BLE001
+                return None, str(exc)
+            if "SecretString" in resp:
+                return resp["SecretString"], None
+            if "SecretBinary" in resp:
+                return None, f"El secreto '{name}' es binario; solo se soportan string."
+            return None, f"El secreto '{name}' no tiene valor."
+
+        names = [name for _, name in secret_pending]
+        with ThreadPoolExecutor(max_workers=min(8, len(names))) as pool:
+            outcomes = list(pool.map(_read_secret, names))
+        for (idx, _name), (value, error) in zip(secret_pending, outcomes):
+            results[idx]["value"] = value
+            if error is None and value is not None:
+                results[idx]["ok"] = True
+            else:
+                results[idx]["error"] = error
+
+    return results

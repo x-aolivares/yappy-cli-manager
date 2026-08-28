@@ -133,6 +133,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .badge.missing_in_b { color: var(--muted); border-color: var(--muted); }
 .badge.ok { color: var(--ok); border-color: var(--ok); }
 .badge.error { color: var(--err); border-color: var(--err); }
+.badge.secret { color: var(--warn); border-color: var(--warn); }
 
 .section-title {
   display: flex;

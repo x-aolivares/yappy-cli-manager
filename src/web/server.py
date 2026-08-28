@@ -36,6 +36,7 @@ _PAGES = {
     "/": "index.html",
     "/db-diff": "db-diff.html",
     "/params-diff": "params-diff.html",
+    "/params-read": "params-read.html",
     "/compile": "compile.html",
 }
 
@@ -67,6 +68,12 @@ class ExecuteRequest(BaseModel):
     object_type: str  # "table" | "procedure"
     schema_name: str = ""
     code: str
+
+
+class ReadParamsEntry(BaseModel):
+    key: str = ""
+    name: str = ""
+    is_secret: bool = False
 
 
 def _env_cfg(env: str) -> Config:
@@ -211,6 +218,23 @@ def api_params_diff(req: ParamsDiffRequest):
         return result.to_dict()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Error de AWS: {exc}") from exc
+
+
+@app.post("/api/params/read")
+def api_params_read(env: str, body: list[ReadParamsEntry]):
+    cfg = _env_cfg(env)
+    try:
+        results = p.read_many(cfg, [e.model_dump() for e in body])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Error de AWS: {exc}") from exc
+    return {
+        "env": env,
+        "results": results,
+        "ok_count": sum(1 for r in results if r.get("ok")),
+        "err_count": sum(1 for r in results if not r.get("ok")),
+    }
 
 
 @app.post("/api/execute/sql")

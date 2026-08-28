@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leer Parámetros — Region Sync</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/static/yappy.css" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">Yappy <span>RegionSync</span></div>
+    <nav>
+      <a href="/">Inicio</a>
+      <a href="/db-diff">DB Diff</a>
+      <a href="/params-diff">Parámetros</a>
+      <a href="/params-read" class="active">Leer Parámetros</a>
+      <a href="/compile">Compilar</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Leer Parámetros / Secretos</h1>
+    <p class="muted">
+      Elegí el ambiente y pegá una lista de parámetros como JSON. Cada entrada con
+      <code>is_secret: true</code> se lee de <strong>Secrets Manager</strong>; el resto de
+      <strong>SSM Parameter Store</strong>. Los valores se muestran tal cual.
+    </p>
+
+    <div class="panel">
+      <div>
+        <label for="env">Ambiente</label>
+        <select id="env" style="max-width: 420px;"></select>
+      </div>
+
+      <label for="entries" style="margin-top:16px;">Lista de parámetros (JSON)</label>
+      <textarea id="entries" spellcheck="false"
+        placeholder='[{ "key": "/yappy/dev/rate", "is_secret": false }]'></textarea>
+
+      <div class="actions" style="justify-content:flex-end; margin-top:10px;">
+        <button id="read-btn">Leer valores</button>
+      </div>
+    </div>
+
+    <div id="result"></div>
+  </main>
+
+  <script src="/static/app.js"></script>
+  <script src="/static/params-read.js"></script>
+</body>
+</html>

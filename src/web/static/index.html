@@ -16,6 +16,7 @@
       <a href="/" class="active">Inicio</a>
       <a href="/db-diff">DB Diff</a>
       <a href="/params-diff">Parámetros</a>
+      <a href="/params-read">Leer Parámetros</a>
       <a href="/compile">Compilar</a>
     </nav>
   </header>
@@ -40,6 +41,14 @@
           Compara un parámetro de SSM Parameter Store o un secreto de Secrets Manager entre dos
           ambientes. Si el valor es JSON, actualiza solo las claves que cambiaron, sin sobreescribir
           el parámetro completo.
+        </p>
+      </a>
+      <a class="card" href="/params-read">
+        <h2>Leer Parámetros / Secretos</h2>
+        <p>
+          Pegás una lista de parámetros como JSON — <code>[{ "key": "/path", "is_secret": false }]</code> —
+          y ves los valores de una. Si marcás <code>is_secret: true</code> los lee de Secrets Manager;
+          el resto, de SSM.
         </p>
       </a>
       <a class="card" href="/compile">
