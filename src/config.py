@@ -2,8 +2,29 @@ from __future__ import annotations
 
 import os
 import glob
+import re
+import sys
 from pathlib import Path
 from dotenv import dotenv_values
+
+
+def win_to_posix(path: str) -> str:
+    """Convert a Windows path to Git Bash style for display (C:\\x -> /c/x)."""
+    p = path.replace("\\", "/")
+    if sys.platform == "win32" and re.match(r"^[A-Za-z]:/", p):
+        p = f"/{p[0].lower()}{p[2:]}"
+    return p
+
+
+def posix_to_win(path: str) -> str:
+    """Normalize a Git Bash style path (/c/x) to a real Windows path (C:\\x).
+
+    Accepts both formats; non-posix values pass through unchanged.
+    """
+    m = re.match(r"^/([a-zA-Z])/(.*)$", path)
+    if m:
+        return f"{m.group(1).upper()}:{os.sep}{m.group(2).replace('/', os.sep)}".rstrip(os.sep)
+    return path
 
 
 class Config:
@@ -147,11 +168,14 @@ class Config:
 
     @property
     def profile_path(self) -> str:
-        return self.get("PROFILE_PATH", "C:\\Development\\profile")
+        # No hardcoded Windows path: derive from the environment. Override with PROFILE_PATH.
+        default = str(Path(os.environ.get("SystemDrive", "C:")) / "Development" / "profile")
+        return self.get("PROFILE_PATH", default)
 
     @property
     def workspace_path(self) -> str:
-        return self.require("WORKSPACE_PATH")
+        # Accepts Git Bash style (/c/...) in config; normalize for the Windows runtime.
+        return posix_to_win(self.require("WORKSPACE_PATH"))
 
     @property
     def aws_user(self) -> str | None:

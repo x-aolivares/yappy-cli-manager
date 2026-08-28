@@ -1,4 +1,5 @@
 import importlib.util
+import os
 import subprocess
 import sys
 import time
@@ -8,12 +9,20 @@ import typer
 
 from ..api.kafka import KafkaService
 from ..base import BaseCommand, _aws_cmd
-from ..config import Config
+from ..config import Config, win_to_posix
 from ..db.tunnel import _generate_token, _write_local_env
 from ..deprecation import warn_deprecated
 from ..logger import info, success, warn, die
 
 app = typer.Typer(help="Composite workflows")
+
+
+def _default_kafka_agents() -> str:
+    """Default kafka-agents location, derived from the environment (no hardcoded Windows path)."""
+    return str(
+        Path(os.environ.get("SystemDrive", "C:"))
+        / "Development" / "Workspace" / "Yappy" / "test" / "kafka-agents"
+    )
 
 
 class WorkflowCommand(BaseCommand):
@@ -52,7 +61,7 @@ def debug_local(
     info(f"  · DB tunnel     -> localhost:{cfg.db_port}")
     info(f"  · Kafka server  -> localhost:9092")
     info(f"  · Kafdrop UI    -> http://localhost:8080")
-    info(f"  · Kafka agents  -> {kafka_agents_path or cfg.get('KAFKA_AGENTS_PATH', 'C:\\Development\\Workspace\\Yappy\\test\\kafka-agents')}")
+    info(f"  · Kafka agents  -> {win_to_posix(kafka_agents_path or cfg.get('KAFKA_AGENTS_PATH', _default_kafka_agents()))}")
     print()
 
     info("[1/5] Checking AWS session...")
@@ -96,13 +105,13 @@ def debug_local(
 
     info("[5/5] Checking kafka-agents...")
     agents_path = kafka_agents_path or str(
-        Path(cfg.get("KAFKA_AGENTS_PATH", "C:\\Development\\Workspace\\Yappy\\test\\kafka-agents"))
+        Path(cfg.get("KAFKA_AGENTS_PATH", _default_kafka_agents()))
     )
     agents_dir = Path(agents_path)
     if agents_dir.exists():
-        success(f"kafka-agents found at {agents_dir}")
+        success(f"kafka-agents found at {win_to_posix(agents_dir)}")
         info(f"  Start it manually in another terminal:")
-        info(f"  cd {agents_dir} && <your run command>")
+        info(f"  cd {win_to_posix(agents_dir)} && <your run command>")
     else:
         warn(f"kafka-agents not found at {agents_dir}")
         info("  You can pass --kafka-agents-path to set the correct path")

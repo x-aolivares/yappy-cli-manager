@@ -78,9 +78,9 @@ def test_kafka_service_rejects_non_windows(call, monkeypatch):
 
     monkeypatch.setattr(api_kafka, "die", fake_die)
     svc = api_kafka.KafkaService(SimpleNamespace(
-        kafka_core_path="C:\\kafka\\kafka-core",
-        kafka_ui_path="C:\\kafka\\kafka-ui",
-        kafka_path="C:\\kafka",
+        kafka_core_path="/c/kafka/kafka-core",
+        kafka_ui_path="/c/kafka/kafka-ui",
+        kafka_path="/c/kafka",
     ))
     with pytest.raises(SystemExit):
         if call == "up":

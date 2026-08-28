@@ -120,13 +120,13 @@ def _find_bash() -> str | None:
     bash = shutil.which("bash")
     if bash:
         return bash
-    # Try common Git Bash locations
-    for path in [
-        "C:\\Program Files\\Git\\bin\\bash.exe",
-        "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
-    ]:
-        if Path(path).exists():
-            return path
+    # Try common Git Bash locations, derived from the environment
+    for var in ("ProgramFiles", "ProgramFiles(x86)"):
+        base = os.environ.get(var)
+        if base:
+            candidate = Path(base) / "Git" / "bin" / "bash.exe"
+            if candidate.exists():
+                return str(candidate)
     return None
 
 

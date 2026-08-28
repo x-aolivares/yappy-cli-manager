@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 
 from .logger import console, info, success, warn, raw, die
-from .config import Config
+from .config import Config, win_to_posix
 from .aws.session import app as aws_app
 from .db.tunnel import app as db_app
 from .ssm.tunnel import CLUSTER_ALIASES, app as ssm_app
@@ -19,12 +19,6 @@ from .verbs.login import login_app
 from .verbs.exec import exec_app
 from .verbs.logs import logs_app
 
-
-def _win_to_posix(path: str) -> str:
-    p = path.replace("\\", "/")
-    if sys.platform == "win32" and re.match(r"^[A-Za-z]:/", p):
-        p = f"/{p[0].lower()}{p[2:]}"
-    return p
 
 app = typer.Typer(
     name="yappy",
@@ -101,22 +95,22 @@ def config(env: str = typer.Argument(None, help="Environment to show (dev, qa, .
         print()
         info("[bold]=== BASE ===[/bold]")
         info(f"  AWS User:     {base.aws_user}")
-        info(f"  Kafka Path:   {base.kafka_path}")
-        info(f"  Profile:      {base.profile_path}")
-        info(f"  Workspace:    {base.workspace_path}")
+        info(f"  Kafka Path:   {win_to_posix(base.kafka_path)}")
+        info(f"  Profile:      {win_to_posix(base.profile_path)}")
+        info(f"  Workspace:    {win_to_posix(base.workspace_path)}")
 
 
 @app.command()
 def workspace():
     """Show the project workspace path."""
     cfg = Config()
-    print(_win_to_posix(cfg.workspace_path))
+    print(win_to_posix(cfg.workspace_path))
 
 
 @app.command()
 def home():
     """Show the yappy project root path."""
-    print(_win_to_posix(str(Path(__file__).resolve().parent.parent)))
+    print(win_to_posix(str(Path(__file__).resolve().parent.parent)))
 
 
 @app.command()

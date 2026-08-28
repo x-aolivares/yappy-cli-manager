@@ -42,8 +42,8 @@ Estructura esperada en disco (configurable vía `KAFKA_PATH` en `config/env.base
 Por defecto Kafka se instala dentro del repo (bajo `devkit/kafka`):
 
 ```
-C:\Development\yappy-cli-manager\devkit\kafka\kafka-core/
-C:\Development\yappy-cli-manager\devkit\kafka\kafka-ui/
+/c/Development/yappy-cli-manager/devkit/kafka/kafka-core/
+/c/Development/yappy-cli-manager/devkit/kafka/kafka-ui/
 ```
 
 ### 5. Java 17+ (solo para Kafdrop UI)
