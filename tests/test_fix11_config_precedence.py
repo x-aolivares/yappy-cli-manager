@@ -95,3 +95,14 @@ def test_known_environments_accepts_names_with_dots(config_dir):
 def test_known_environments_excludes_base_and_examples(config_dir):
     assert "base" not in Config.known_environments()
     assert all("example" not in e for e in Config.known_environments())
+
+
+def test_yappy_config_dir_override_wins(tmp_path, monkeypatch):
+    alt = tmp_path / "config"
+    alt.mkdir()
+    (alt / "env.bravo").write_text("AWS_REGION=eu-west-1\n")
+    monkeypatch.setenv("YAPPY_CONFIG_DIR", str(alt))
+
+    Config._config_dir = None
+    assert Config._get_config_dir() == alt
+    assert Config.known_environments() == ["bravo"]

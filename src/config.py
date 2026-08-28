@@ -56,6 +56,12 @@ class Config:
     def _get_config_dir(cls) -> Path:
         if cls._config_dir:
             return cls._config_dir
+        override = os.environ.get("YAPPY_CONFIG_DIR")
+        if override:
+            config_dir = Path(override)
+            if config_dir.is_dir():
+                cls._config_dir = config_dir
+                return config_dir
         package_root = Path(__file__).resolve().parent.parent
         config_dir = package_root / "config"
         if config_dir.exists():

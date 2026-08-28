@@ -197,6 +197,18 @@ def run(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = True) ->
     """Start the Region Sync web UI (blocking)."""
     import uvicorn
 
+    config_dir = Config._get_config_dir()
+    envs = Config.known_environments()
+    if not config_dir.is_dir() or not envs:
+        info(
+            "ADVERTENCIA: no se encontraron ambientes. "
+            f"Config dir resuelto: {config_dir}. "
+            "Si las regiones están en otra carpeta, exportá YAPPY_CONFIG_DIR=<ruta>/config."
+        )
+    else:
+        info(f"Config dir: {config_dir}")
+        info(f"Ambientes: {', '.join(envs)}")
+
     url = f"http://{host}:{port}"
     info(f"Region Sync web -> {url}")
     if open_browser:
