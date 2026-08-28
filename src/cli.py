@@ -114,6 +114,19 @@ def home():
 
 
 @app.command()
+def web(
+    port: int = typer.Option(8000, "--port", "-p", help="Puerto de la web"),
+    no_browser: bool = typer.Option(
+        False, "--no-browser", help="No abrir el navegador automáticamente"
+    ),
+):
+    """Abrir la web de Region Sync (diff de DB y de parámetros/secretos entre ambientes)."""
+    from .web.server import run
+
+    run(port=port, open_browser=not no_browser)
+
+
+@app.command()
 def init(shell: str = typer.Argument("bash", help="Shell type: bash, zsh, powershell")):
     """Generate shell integration — add to .bashrc: eval "$(yappy init bash)"."""
     if shell == "powershell":

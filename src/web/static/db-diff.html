@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DB Diff — Region Sync</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">yappy <span>region-sync</span></div>
+    <nav>
+      <a href="/">Inicio</a>
+      <a href="/db-diff" class="active">DB Diff</a>
+      <a href="/params-diff">Parámetros</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Diff de Base de Datos</h1>
+    <p class="muted">
+      Sentido <strong>B → A</strong>: se comparan las dos regiones y se genera el script para
+      actualizar la región A (la que recibe los cambios de B).
+    </p>
+
+    <div class="panel">
+      <div class="form-grid">
+        <div>
+          <label for="env-a">Región A (destino)</label>
+          <select id="env-a"></select>
+        </div>
+        <div>
+          <label for="env-b">Región B (fuente)</label>
+          <select id="env-b"></select>
+        </div>
+        <div>
+          <label for="schema">Schema</label>
+          <input type="text" id="schema" placeholder="p. ej. yappy" />
+        </div>
+        <div>
+          <label for="object-name">Nombre del objeto</label>
+          <input type="text" id="object-name" placeholder="p. ej. users" />
+        </div>
+      </div>
+
+      <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+        <div>
+          <label>Tipo de objeto</label>
+          <div class="radio-row">
+            <label><input type="radio" name="object-type" value="table" checked /> Tabla</label>
+            <label><input type="radio" name="object-type" value="procedure" /> Stored procedure</label>
+          </div>
+        </div>
+        <div class="actions" style="align-items:flex-end; justify-content:flex-end;">
+          <button id="compare-btn">Comparar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="result"></div>
+  </main>
+
+  <script src="/static/db-diff.js"></script>
+</body>
+</html>

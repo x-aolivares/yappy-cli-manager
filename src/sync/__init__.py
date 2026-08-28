@@ -1,0 +1,1 @@
+"""Region sync domain: DB object diff and parameter/secret diff (B -> A)."""

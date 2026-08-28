@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Region Sync</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">yappy <span>region-sync</span></div>
+    <nav>
+      <a href="/" class="active">Inicio</a>
+      <a href="/db-diff">DB Diff</a>
+      <a href="/params-diff">Parámetros</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Sincronización entre regiones AWS (B → A)</h1>
+    <p class="muted">
+      Región A = región destino (se actualiza) · Región B = región fuente (contiene los cambios nuevos).
+      Las regiones son los ambientes definidos en <code>config/env.*</code> de yappy-cli-manager.
+    </p>
+    <div class="cards">
+      <a class="card" href="/db-diff">
+        <h2>Diff de Base de Datos</h2>
+        <p>
+          Compara una tabla o un stored procedure entre dos ambientes. Si difieren te genera el
+          script de actualización: <code>CREATE</code> para crear, <code>ALTER TABLE</code> con el
+          diff de columnas e índices, o <code>CREATE OR REPLACE PROCEDURE</code>.
+        </p>
+      </a>
+      <a class="card" href="/params-diff">
+        <h2>Diff de Parámetros / Secretos</h2>
+        <p>
+          Compara un parámetro de SSM Parameter Store o un secreto de Secrets Manager entre dos
+          ambientes. Si el valor es JSON, actualiza solo las claves que cambiaron, sin sobreescribir
+          el parámetro completo.
+        </p>
+      </a>
+    </div>
+  </main>
+</body>
+</html>
