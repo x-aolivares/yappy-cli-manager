@@ -74,6 +74,10 @@ compileBtn.addEventListener("click", async () => {
     code: codeInput.value,
   };
 
+  if (!payload.env) {
+    result.innerHTML = renderError("Seleccioná el ambiente.");
+    return;
+  }
   if (!payload.code.trim()) {
     result.innerHTML = renderError("Pegá el código SQL que querés ejecutar.");
     return;

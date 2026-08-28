@@ -94,6 +94,11 @@ compareBtn.addEventListener("click", async () => {
     object_name: document.getElementById("object-name").value.trim(),
   };
 
+  if (!payload.env_a || !payload.env_b) {
+    result.innerHTML = renderError("Seleccioná las dos regiones.");
+    return;
+  }
+
   if (!payload.schema_name || !payload.object_name) {
     result.innerHTML = renderError("Completá el schema y el nombre del objeto.");
     return;

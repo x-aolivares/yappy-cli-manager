@@ -15,18 +15,21 @@ async function loadEnvs(...selects) {
     const cfg = data.config_dir ? ` (config_dir: ${escapeHtml(data.config_dir)})` : "";
     throw new Error("no se encontraron ambientes en config/env.*" + cfg);
   }
-  const opts = envs.map((e) => {
-    const note = e.load_error
-      ? ` (error: ${escapeHtml(e.load_error)})`
-      : "";
-    return `<option value="${escapeHtml(e.env)}">${escapeHtml(e.env)} — ${escapeHtml(
-      e.region || "",
-    )} (${escapeHtml(e.profile || "")})${note}</option>`;
-  });
-  selects.forEach((sel, i) => {
+  const opts = [
+    `<option value="" disabled selected>Seleccioná el ambiente…</option>`,
+    ...envs.map((e) => {
+      const note = e.load_error
+        ? ` (error: ${escapeHtml(e.load_error)})`
+        : "";
+      return `<option value="${escapeHtml(e.env)}">${escapeHtml(e.env)} — ${escapeHtml(
+        e.region || "",
+      )} (${escapeHtml(e.profile || "")})${note}</option>`;
+    }),
+  ];
+  selects.forEach((sel) => {
     if (!sel) return;
     sel.innerHTML = opts.join("");
-    sel.value = envs.length >= 2 ? envs[i].env : envs[0].env;
+    sel.value = "";
   });
 }
 

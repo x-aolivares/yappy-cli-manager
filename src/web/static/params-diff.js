@@ -111,6 +111,11 @@ compareBtn.addEventListener("click", async () => {
     name: document.getElementById("name").value.trim(),
   };
 
+  if (!payload.env_a || !payload.env_b) {
+    result.innerHTML = renderError("Seleccioná las dos regiones.");
+    return;
+  }
+
   if (!payload.name) {
     result.innerHTML = renderError("Ingresá el nombre del parámetro o secreto.");
     return;
