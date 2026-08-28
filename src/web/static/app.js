@@ -6,7 +6,7 @@ const STATUS_LABELS = {
   none: "No existe en ninguna región",
 };
 
-async function loadEnvs(selectA, selectB) {
+async function loadEnvs(...selects) {
   const res = await fetch("/api/envs");
   if (!res.ok) throw new Error("HTTP " + res.status);
   const data = await res.json();
@@ -23,7 +23,8 @@ async function loadEnvs(selectA, selectB) {
       e.region || "",
     )} (${escapeHtml(e.profile || "")})${note}</option>`;
   });
-  [selectA, selectB].forEach((sel, i) => {
+  selects.forEach((sel, i) => {
+    if (!sel) return;
     sel.innerHTML = opts.join("");
     sel.value = envs.length >= 2 ? envs[i].env : envs[0].env;
   });
