@@ -1,15 +1,15 @@
 :root {
-  --bg: #0d1117;
-  --panel: #161b22;
-  --border: #30363d;
+  --bg: var(--yappy-ink3);
+  --panel: var(--yappy-ink);
+  --border: var(--yappy-ink2);
   --text: #e6edf3;
-  --muted: #8b949e;
-  --accent: #ff7f00;
-  --accent-2: #ffe01f;
-  --ok: #3fb950;
-  --warn: #d29922;
-  --err: #f85149;
-  --code-bg: #010409;
+  --muted: var(--yappy-gry2);
+  --accent: var(--yappy-bl);
+  --accent-2: var(--yappy-org);
+  --ok: var(--yappy-grn);
+  --warn: var(--yappy-org2);
+  --err: var(--yappy-red);
+  --code-bg: #10151f;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -95,7 +95,7 @@ select:focus, input:focus { outline: 1px solid var(--accent); }
 
 button {
   background: var(--accent);
-  color: #0d1117;
+  color: #fff;
   font-weight: 700;
   border: none;
   border-radius: 6px;

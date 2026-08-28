@@ -1,0 +1,31 @@
+/* Paleta de marca de Yappy Comercial — extraída del sitio oficial
+   https://www.yappy.com.pa/ (Fusion/Avada theme palette). */
+:root {
+  /* Azules de marca */
+  --yappy-bl: #1677D8;
+  --yappy-bldark: #004C97;
+  --yappy-cyan: #1EB2F5;
+  --yappy-cyan2: #21ACEB;
+
+  /* Naranjas de marca */
+  --yappy-org: #FF973C;
+  --yappy-org2: #ED8C38;
+
+  /* Verde / teal de marca */
+  --yappy-grn: #65BC7B;
+  --yappy-teal: #19C0C0;
+
+  /* Rojo de marca */
+  --yappy-red: #ED5353;
+
+  /* Grises-azulados (fondos y texto) */
+  --yappy-ink: #212934;
+  --yappy-ink2: #444C5E;
+  --yappy-ink3: #1D242D;
+  --yappy-gry: #F2F3F5;
+  --yappy-gry2: #9EA0A4;
+
+  /* Celestes de fondo */
+  --yappy-tint: #F4FAFF;
+  --yappy-tint2: #E3F3FF;
+}
