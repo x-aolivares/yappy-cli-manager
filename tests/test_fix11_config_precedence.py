@@ -82,3 +82,16 @@ def test_base_config_profile_still_resolves(config_dir, monkeypatch):
     cfg = Config()
 
     assert cfg.profile == "base-profile"
+
+
+def test_known_environments_accepts_names_with_dots(config_dir):
+    (config_dir / "env.us-east-1").write_text("AWS_REGION=us-east-1\n")
+    (config_dir / "env.qa.bravo").write_text("AWS_REGION=eu-central-1\n")
+    (config_dir / "env.environment.example").write_text("AWS_REGION=us-west-1\n")
+
+    assert Config.known_environments() == ["dev", "qa.bravo", "us-east-1"]
+
+
+def test_known_environments_excludes_base_and_examples(config_dir):
+    assert "base" not in Config.known_environments()
+    assert all("example" not in e for e in Config.known_environments())

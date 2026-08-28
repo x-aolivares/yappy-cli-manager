@@ -82,12 +82,12 @@ class Config:
     def known_environments(cls) -> list[str]:
         config_dir = cls._get_config_dir()
         pattern = str(config_dir / "env.*")
-        files = glob.glob(pattern)
         envs = []
-        for f in files:
-            parts = Path(f).name.split(".")
-            if len(parts) == 2 and parts[0] == "env" and parts[1] != "base":
-                envs.append(parts[1])
+        for f in glob.glob(pattern):
+            name = Path(f).name[len("env."):]
+            if name in ("", "base") or name.endswith(".example"):
+                continue
+            envs.append(name)
         return sorted(envs)
 
     def get(self, key: str, default: str | None = None) -> str | None:
