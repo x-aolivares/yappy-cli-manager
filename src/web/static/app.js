@@ -1,8 +1,8 @@
 const STATUS_LABELS = {
   equal: "Sin cambios",
   different: "Hay cambios",
-  missing_in_a: "Falta en Destino",
-  missing_in_b: "Falta en Origen",
+  missing_in_a: "Falta en la región Destino",
+  missing_in_b: "Falta en la región de Origen",
   none: "No existe en ninguna región",
 };
 
