@@ -1,5 +1,10 @@
-/* Paleta de marca de Yappy Comercial — extraída del sitio oficial
-   https://www.yappy.com.pa/ (Fusion/Avada theme palette). */
+/* Paleta de marca de Yappy Comercial.
+   Colores ancla extraídos del branding oficial:
+   - Azul corporativo (texto/logotipo): #0050B3
+   - Celeste (burbuja izquierda):        #00A3E0
+   - Naranja (burbuja derecha):          #FF8200
+   - Fondo claro estándar:               #FFFFFF
+   - Fondo oscuro estándar:              #121212 */
 @font-face {
   font-family: "ValdemaMedium";
   src: url("/static/fonts/valdema-medium.woff2") format("woff2"),
@@ -11,28 +16,29 @@
 
 :root {
   /* Azules de marca */
-  --yappy-bl: #1677D8;
-  --yappy-bldark: #004C97;
-  --yappy-cyan: #1EB2F5;
-  --yappy-cyan2: #21ACEB;
+  --yappy-bl: #0050B3;      /* azul corporativo: texto y logotipo */
+  --yappy-bldark: #003A80;  /* hover del azul corporativo */
+  --yappy-cyan: #00A3E0;    /* celeste: burbuja izquierda */
+  --yappy-cyan2: #7FC7E8;   /* celeste claro (tint) */
 
   /* Naranjas de marca */
-  --yappy-org: #FF973C;
-  --yappy-org2: #ED8C38;
+  --yappy-org: #FF8200;     /* naranja: burbuja derecha */
+  --yappy-org2: #D96D00;    /* hover del naranja */
 
-  /* Verde / teal de marca */
+  /* Fondos estándar */
+  --yappy-white: #FFFFFF;   /* fondo claro estándar */
+  --yappy-ink: #121212;     /* fondo oscuro estándar */
+
+  /* Neutros derivados para la UI sobre fondo oscuro */
+  --yappy-ink2: #262626;    /* superficies elevadas (paneles) */
+  --yappy-ink3: #333333;    /* bordes */
+  --yappy-gry: #F5F5F5;     /* texto principal */
+  --yappy-gry2: #9E9E9E;    /* texto apagado */
+
+  /* Semánticos de estado */
   --yappy-grn: #65BC7B;
-  --yappy-teal: #19C0C0;
-
-  /* Rojo de marca */
   --yappy-red: #ED5353;
-
-  /* Grises-azulados (fondos y texto) */
-  --yappy-ink: #212934;
-  --yappy-ink2: #444C5E;
-  --yappy-ink3: #1D242D;
-  --yappy-gry: #F2F3F5;
-  --yappy-gry2: #9EA0A4;
+  --yappy-teal: #19C0C0;
 
   /* Celestes de fondo */
   --yappy-tint: #F4FAFF;

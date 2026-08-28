@@ -1,15 +1,15 @@
 :root {
-  --bg: var(--yappy-ink3);
-  --panel: var(--yappy-ink);
-  --border: var(--yappy-ink2);
-  --text: #e6edf3;
+  --bg: var(--yappy-ink);
+  --panel: var(--yappy-ink2);
+  --border: var(--yappy-ink3);
+  --text: var(--yappy-gry);
   --muted: var(--yappy-gry2);
   --accent: var(--yappy-bl);
   --accent-2: var(--yappy-org);
   --ok: var(--yappy-grn);
   --warn: var(--yappy-org2);
   --err: var(--yappy-red);
-  --code-bg: #10151f;
+  --code-bg: #0d0d0d;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
