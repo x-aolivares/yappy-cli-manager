@@ -18,8 +18,8 @@ function render(data) {
     `<div class="panel" style="margin-top:18px;">
        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
          <span>${statusBadge(data.status)}</span>
-         <span class="muted">${data.object_type} ${data.schema_name}.${data.object_name}</span>
-         <span class="muted">${data.env_a} → ${data.env_b}</span>
+         <span class="muted">${data.object_type} ${escapeHtml(data.schema_name)}.${escapeHtml(data.object_name)}</span>
+         <span class="muted">${escapeHtml(data.env_a)} → ${escapeHtml(data.env_b)}</span>
        </div>` +
       (data.notes && data.notes.length
         ? data.notes.map((n) => `<div class="note">• ${escapeHtml(n)}</div>`).join("")
@@ -63,9 +63,6 @@ function render(data) {
     const scriptHtml = data.script
       ? `<pre class="script-block">${escapeHtml(data.script)}</pre>`
       : `<pre class="empty">No se detectaron cambios de estructura ejecutables.</pre>`;
-    const copyWrap = document.createElement("div");
-    const btnWrap = document.createElement("span");
-    btnWrap.setAttribute("id", "copy-badge");
     parts.push(
       `<div class="panel">
          <div class="section-title">
@@ -105,7 +102,9 @@ compareBtn.addEventListener("click", async () => {
   compareBtn.disabled = true;
   result.innerHTML = `<div class="panel"><span class="spinner"></span>Comparando ${objectLabel(
     payload.object_type,
-  )} ${payload.schema_name}.${payload.object_name} entre ${payload.env_a} y ${payload.env_b}...</div>`;
+  )} ${escapeHtml(payload.schema_name)}.${escapeHtml(payload.object_name)} entre ${escapeHtml(
+    payload.env_a,
+  )} y ${escapeHtml(payload.env_b)}...</div>`;
 
   try {
     const res = await fetch("/api/db/diff", {

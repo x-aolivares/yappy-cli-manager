@@ -8,15 +8,21 @@ const STATUS_LABELS = {
 
 async function loadEnvs(selectA, selectB) {
   const res = await fetch("/api/envs");
+  if (!res.ok) throw new Error("HTTP " + res.status);
   const data = await res.json();
-  const opts = data.environments.map(
-    (e) => `<option value="${e.env}">${e.env} — ${e.region} (${e.profile})</option>`,
+  const envs = Array.isArray(data.environments) ? data.environments : [];
+  if (!envs.length) {
+    throw new Error("no se encontraron ambientes en config/env.*");
+  }
+  const opts = envs.map(
+    (e) =>
+      `<option value="${escapeHtml(e.env)}">${escapeHtml(e.env)} — ${escapeHtml(
+        e.region,
+      )} (${escapeHtml(e.profile)})</option>`,
   );
-  [selectA, selectB].forEach((sel) => {
+  [selectA, selectB].forEach((sel, i) => {
     sel.innerHTML = opts.join("");
-    if (opts.length >= 2) {
-      sel.value = data.environments[sel === selectA ? 0 : 1].env;
-    }
+    sel.value = envs.length >= 2 ? envs[i].env : envs[0].env;
   });
 }
 
@@ -33,7 +39,8 @@ function escapeHtml(text) {
   return String(text)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 async function copyText(text) {
