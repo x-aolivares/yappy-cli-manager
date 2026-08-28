@@ -65,6 +65,15 @@ class ParamsDiffRequest(BaseModel):
     include_deletes: bool = False
 
 
+class ApplyParamsRequest(BaseModel):
+    env_a: str
+    env_b: str
+    service: str  # "ssm" | "secretsmanager"
+    name: str
+    new_value: str
+    value_type: str = "String"
+
+
 class ExecuteRequest(BaseModel):
     env: str
     object_type: str  # "table" | "procedure"
@@ -235,6 +244,30 @@ def api_params_diff(req: ParamsDiffRequest):
         return result.to_dict()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Error de AWS: {exc}") from exc
+
+
+@app.post("/api/params/apply")
+def api_params_apply(req: ApplyParamsRequest):
+    if req.env_a == req.env_b:
+        raise HTTPException(status_code=400, detail="env_a y env_b deben ser distintos")
+    if req.service not in ("ssm", "secretsmanager"):
+        raise HTTPException(status_code=400, detail="service debe ser 'ssm' o 'secretsmanager'")
+
+    cfg_a = _env_cfg(req.env_a)
+    _env_cfg(req.env_b)
+
+    script = (
+        p.build_ssm_script(req.name, req.new_value, req.value_type, cfg_a)
+        if req.service == "ssm"
+        else p.build_secret_script(req.name, req.new_value, cfg_a)
+    )
+    return {
+        "env_a": req.env_a,
+        "env_b": req.env_b,
+        "service": req.service,
+        "name": req.name,
+        "script": script,
+    }
 
 
 @app.post("/api/params/read")

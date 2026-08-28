@@ -7,8 +7,10 @@ from src.sync import params as p
 from src.web.server import (
     api_envs,
     api_db_diff,
+    api_params_apply,
     api_params_diff,
     api_params_read,
+    ApplyParamsRequest,
     DbDiffRequest,
     ParamsDiffRequest,
     ReadParamsEntry,
@@ -141,6 +143,44 @@ def test_api_params_diff_forwards_include_deletes(monkeypatch):
     )
     assert capture.kwargs["include_deletes"] is True
     assert payload["status"] == "missing_in_b"
+
+
+def test_api_params_apply_builds_ssm_script(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    payload = api_params_apply(
+        ApplyParamsRequest(
+            env_a="dev", env_b="qa", service="ssm", name="/x",
+            new_value='{"name": 1}', value_type="SecureString",
+        )
+    )
+
+    assert payload["script"].startswith("aws ssm put-parameter")
+    assert "--type SecureString" in payload["script"]
+    assert "--profile 'prof-dev'" in payload["script"]
+    assert "'{\"name\": 1}'" in payload["script"]
+
+
+def test_api_params_apply_builds_secret_script(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    payload = api_params_apply(
+        ApplyParamsRequest(
+            env_a="qa", env_b="dev", service="secretsmanager", name="/s",
+            new_value="pepitos",
+        )
+    )
+
+    assert payload["script"].startswith("aws secretsmanager update-secret")
+    assert "--secret-id '/s'" in payload["script"]
+    assert "'pepitos'" in payload["script"]
+    assert "--profile 'prof-qa'" in payload["script"]
 
 
 class _FakeConn:

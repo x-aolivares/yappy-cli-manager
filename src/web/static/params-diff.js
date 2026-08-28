@@ -7,7 +7,159 @@ loadEnvs(envB, envA).catch((e) => {
   result.innerHTML = renderError("No se pudieron cargar los ambientes: " + e.message);
 });
 
-function render(data) {
+/* --- Interactive change selection state --- */
+
+let data = null;
+let rows = [];
+let isJSON = false;
+let scriptText = "";
+let applyTimer = null;
+let applySeq = 0;
+
+function parseValue(text) {
+  const t = String(text).trim();
+  if (t === "") return "";
+  try {
+    return JSON.parse(t);
+  } catch {
+    return t;
+  }
+}
+
+function getParts(path) {
+  return path.replace(/^\$/, "").split(".").filter((s) => s !== "");
+}
+
+function clone(v) {
+  return JSON.parse(JSON.stringify(v));
+}
+
+function setAt(obj, parts, value) {
+  if (!parts.length) return value;
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const seg = parts[i];
+    const nextIsIndex = /^\d+$/.test(parts[i + 1]);
+    if (cur[seg] == null || typeof cur[seg] !== "object") {
+      cur[seg] = nextIsIndex ? [] : {};
+    }
+    cur = cur[seg];
+  }
+  cur[parts[parts.length - 1]] = value;
+  return obj;
+}
+
+function deleteAt(obj, parts) {
+  if (!parts.length) return {};
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const seg = parts[i];
+    if (cur == null || cur[seg] == null) return obj;
+    cur = cur[seg];
+  }
+  const last = parts[parts.length - 1];
+  if (Array.isArray(cur) && /^\d+$/.test(last)) {
+    cur.splice(Number(last), 1);
+  } else {
+    delete cur[last];
+  }
+  return obj;
+}
+
+function mergedValue() {
+  const selected = rows.filter((r) => r.include);
+  if (!isJSON) {
+    const whole = selected.find((r) => r.path === "$");
+    return whole ? parseValue(whole.text) : "";
+  }
+  const base = clone(parseValue(data.value_a ?? ""));
+  const dels = selected
+    .filter((r) => r.op === "del")
+    .map((r) => getParts(r.path))
+    .sort((a, b) => {
+      const la = a[a.length - 1] || "";
+      const lb = b[b.length - 1] || "";
+      const na = /^\d+$/.test(la);
+      const nb = /^\d+$/.test(lb);
+      if (na && nb) return Number(lb) - Number(la);
+      return 0;
+    });
+  for (const parts of dels) deleteAt(base, parts);
+  for (const r of selected) {
+    if (r.op !== "del") setAt(base, getParts(r.path), parseValue(r.text));
+  }
+  return base;
+}
+
+function serializeMerged() {
+  const v = mergedValue();
+  return isJSON ? JSON.stringify(v, null, 2) : String(v);
+}
+
+function state() {
+  return {
+    key: data.source_marker || "",
+    _i: Math.random(),
+  };
+}
+
+function refreshScript() {
+  const seq = ++applySeq;
+  const newValue = serializeMerged();
+  const pre = document.getElementById("script-pre");
+  fetch("/api/params/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      env_a: data.env_a,
+      env_b: data.env_b,
+      service: data.service,
+      name: data.name,
+      new_value: newValue,
+      value_type: data.value_type_b || "String",
+    }),
+  })
+    .then(async (res) => {
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
+      return body;
+    })
+    .then((body) => {
+      if (seq !== applySeq) return;
+      scriptText = body.script;
+      if (pre) pre.textContent = scriptText;
+    })
+    .catch((e) => {
+      if (seq !== applySeq) return;
+      scriptText = "";
+      if (pre) pre.textContent = "No se pudo generar el comando: " + e.message;
+    });
+}
+
+function onEdit() {
+  const preview = document.getElementById("preview-pre");
+  if (preview) preview.textContent = serializeMerged();
+  clearTimeout(applyTimer);
+  applyTimer = setTimeout(refreshScript, 350);
+}
+
+function makeCopyBtn() {
+  const btn = document.createElement("button");
+  btn.className = "secondary";
+  btn.textContent = "Copiar comando";
+  btn.addEventListener("click", async () => {
+    const ok = await copyText(scriptText);
+    btn.textContent = ok ? "¡Copiado!" : "Error al copiar";
+    setTimeout(() => (btn.textContent = "Copiar comando"), 1500);
+  });
+  return btn;
+}
+
+/* --- Rendering --- */
+
+function render(payload) {
+  clearTimeout(applyTimer);
+  data = payload;
   const parts = [];
 
   parts.push(
@@ -44,25 +196,45 @@ function render(data) {
      </div>`,
   );
 
-  if (data.changes && data.changes.length) {
-    const rows = data.changes
-      .map(
-        (c) =>
-          `<tr>
-             <td><code>${escapeHtml(c.path)}</code></td>
-             <td><span class="badge ${c.op === "removed" ? "missing_in_b" : "different"}">${escapeHtml(c.op)}</span></td>
-             <td>${formatValue(c.new)}</td>
-             <td>${formatValue(c.old)}</td>
-           </tr>`,
-      )
-      .join("");
-    parts.push(
-      `<div class="panel">
-         <div class="section-title"><strong>Cambios</strong>${data.is_json ? '<span class="muted">(diferencias JSON por clave)</span>' : ""}</div>
-         <table><thead><tr><th>Ruta</th><th>Operación</th><th>Región de Origen</th><th>Región Destino</th></tr></thead>
-         <tbody>${rows}</tbody></table>
-       </div>`,
-    );
+  const hasChanges = Array.isArray(data.changes) && data.changes.length > 0;
+
+  if (hasChanges && data.is_json) {
+    isJSON = true;
+    rows = data.changes.map((c) => ({
+      path: c.path,
+      op: c.op,
+      old: c.old,
+      text:
+        c.op === "del"
+          ? ""
+          : c.new != null && typeof c.new === "object"
+          ? JSON.stringify(c.new, null, 2)
+          : c.new == null
+          ? ""
+          : String(c.new),
+      include: true,
+    }));
+    parts.push(renderChangesTable());
+    result.innerHTML = parts.join("");
+    attachChangeHandlers();
+    onEdit();
+    const wrap = document.getElementById("script-actions");
+    if (wrap) wrap.appendChild(makeCopyBtn());
+    return;
+  }
+
+  if (hasChanges && !data.is_json) {
+    isJSON = false;
+    rows = [
+      { path: "$", op: "set", old: data.value_a, text: data.value_b ?? "", include: true },
+    ];
+    parts.push(renderPlainEdit());
+    result.innerHTML = parts.join("");
+    attachChangeHandlers();
+    onEdit();
+    const wrap = document.getElementById("script-actions");
+    if (wrap) wrap.appendChild(makeCopyBtn());
+    return;
   }
 
   if (data.script && ["different", "missing_in_a", "missing_in_b"].includes(data.status)) {
@@ -87,6 +259,7 @@ function render(data) {
         : scriptSection,
     );
     result.innerHTML = parts.join("");
+
     if (data.script) {
       copyButton(data.script).then((btn) => {
         const wrap = result.querySelector(".script-block .actions");
@@ -99,9 +272,83 @@ function render(data) {
   result.innerHTML = parts.join("");
 }
 
+function renderChangesTable() {
+  const bodyRows = rows
+    .map((r, i) => {
+      const opBadge = `<span class="badge ${r.op === "del" ? "missing_in_b" : "different"}">${escapeHtml(r.op)}</span>`;
+      const input =
+        r.op === "del"
+          ? '<span class="muted">Se elimina la clave</span>'
+          : `<textarea class="change-input" data-i="${i}" rows="1" spellcheck="false">${escapeHtml(r.text)}</textarea>`;
+      return `<tr>
+        <td><input type="checkbox" class="change-include" data-i="${i}" ${r.include ? "checked" : ""}></td>
+        <td><code>${escapeHtml(r.path)}</code></td>
+        <td>${opBadge}</td>
+        <td>${formatValue(r.old)}</td>
+        <td>${input}</td>
+      </tr>`;
+    })
+    .join("");
+  return `<div class="panel">
+     <div class="section-title">
+       <strong>Cambios</strong>
+       <span class="muted">(marcá los que querés llevar a destino y editá los valores a aplicar)</span>
+     </div>
+     <table>
+       <thead><tr><th></th><th>Ruta</th><th>Operación</th><th>Valor actual en destino</th><th>Valor a aplicar</th></tr></thead>
+       <tbody>${bodyRows}</tbody>
+     </table>
+   </div>
+   <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; margin-top:14px;">
+     <div class="panel">
+       <div class="section-title"><strong>Valor resultante en destino (${escapeHtml(data.env_a)})</strong></div>
+       <pre id="preview-pre" class="script-block"></pre>
+     </div>
+     <div class="panel script-block">
+       <div class="section-title"><strong>Comando de actualización para la región destino (${escapeHtml(data.env_a)})</strong></div>
+       <pre id="script-pre" class="script-block">Regenerando…</pre>
+       <div class="actions" style="margin-top:10px;"><span id="script-actions"></span></div>
+     </div>
+   </div>`;
+}
+
+function renderPlainEdit() {
+  return `<div class="panel">
+     <div class="section-title"><strong>Valor a aplicar en la región destino (${escapeHtml(data.env_a)})</strong>
+     <span class="muted">(texto plano, no JSON)</span></div>
+     <textarea class="change-input" data-i="0" rows="4" spellcheck="false">${escapeHtml(rows[0].text)}</textarea>
+   </div>
+   <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; margin-top:14px;">
+     <div class="panel">
+       <div class="section-title"><strong>Valor resultante en destino</strong></div>
+       <pre id="preview-pre" class="script-block"></pre>
+     </div>
+     <div class="panel script-block">
+       <div class="section-title"><strong>Comando de actualización para la región destino (${escapeHtml(data.env_a)})</strong></div>
+       <pre id="script-pre" class="script-block">Regenerando…</pre>
+       <div class="actions" style="margin-top:10px;"><span id="script-actions"></span></div>
+     </div>
+   </div>`;
+}
+
+function attachChangeHandlers() {
+  document.querySelectorAll(".change-include").forEach((cb) =>
+    cb.addEventListener("change", () => {
+      rows[+cb.dataset.i].include = cb.checked;
+      onEdit();
+    }),
+  );
+  document.querySelectorAll(".change-input").forEach((ta) =>
+    ta.addEventListener("input", () => {
+      rows[+ta.dataset.i].text = ta.value;
+      onEdit();
+    }),
+  );
+}
+
 function formatValue(v) {
   if (v === null || v === undefined) return '<span class="muted">—</span>';
-  const text = typeof v === "string" ? v : JSON.stringify(v);
+  const text = typeof v === "string" ? v : JSON.stringify(v, null, 2);
   return `<pre style="margin:0; padding:6px 8px; font-size:12px;">${escapeHtml(text)}</pre>`;
 }
 

@@ -96,6 +96,19 @@ textarea {
   line-height: 1.5;
 }
 
+.change-input {
+  width: 100%;
+  min-height: 34px;
+  max-height: 220px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre;
+  overflow: auto;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
 select:focus, input:focus { outline: 1px solid var(--accent); }
 
 .radio-row { display: flex; gap: 18px; padding-top: 8px; }
