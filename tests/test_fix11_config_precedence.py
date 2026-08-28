@@ -106,3 +106,25 @@ def test_yappy_config_dir_override_wins(tmp_path, monkeypatch):
 
     assert Config._get_config_dir() == alt
     assert Config.known_environments() == ["bravo"]
+
+
+def test_config_resolved_walking_up_from_cwd(tmp_path, monkeypatch):
+    from src import config as config_mod
+
+    cfg_dir = tmp_path / "proyecto" / "config"
+    cfg_dir.mkdir(parents=True)
+    (cfg_dir / "env.base").write_text("AWS_PROFILE=base\n")
+    (cfg_dir / "env.promo").write_text("AWS_REGION=sa-east-1\n")
+    subdir = tmp_path / "proyecto" / "subdir"
+    subdir.mkdir()
+
+    monkeypatch.chdir(subdir)
+    monkeypatch.setattr(Config, "_config_dir", None)
+    monkeypatch.setattr(
+        config_mod,
+        "_package_root_config",
+        lambda: tmp_path / "no-existe" / "config",
+    )
+
+    assert Config._get_config_dir() == cfg_dir
+    assert Config.known_environments() == ["promo"]

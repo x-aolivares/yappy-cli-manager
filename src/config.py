@@ -27,6 +27,10 @@ def posix_to_win(path: str) -> str:
     return path
 
 
+def _package_root_config() -> Path:
+    return Path(__file__).resolve().parent.parent / "config"
+
+
 class Config:
     _config_dir: Path | None = None
 
@@ -56,22 +60,31 @@ class Config:
     def _get_config_dir(cls) -> Path:
         if cls._config_dir:
             return cls._config_dir
+
+        # 1) Explicit override (YAPPY_CONFIG_DIR=<folder with env.* files>)
         override = os.environ.get("YAPPY_CONFIG_DIR")
-        if override:
-            config_dir = Path(override)
-            if config_dir.is_dir():
-                cls._config_dir = config_dir
-                return config_dir
-        package_root = Path(__file__).resolve().parent.parent
-        config_dir = package_root / "config"
-        if config_dir.exists():
-            cls._config_dir = config_dir
-            return config_dir
-        fallback = Path.cwd() / "config"
-        if fallback.exists():
-            cls._config_dir = fallback
-            return fallback
-        return config_dir
+        if override and Path(override).is_dir():
+            cls._config_dir = Path(override)
+            return cls._config_dir
+
+        # 2) The project this package is installed from (editable installs / source tree)
+        package_root = _package_root_config()
+        if package_root.is_dir():
+            cls._config_dir = package_root
+            return cls._config_dir
+
+        # 3) Walk up from cwd looking for a config dir with the env.base marker.
+        #    This keeps `yappy web` (and any command) working no matter where the
+        #    package is installed from or which directory it is invoked in.
+        for parent in [Path.cwd(), *Path.cwd().parents]:
+            candidate = parent / "config"
+            if (candidate / "env.base").is_file():
+                cls._config_dir = candidate
+                return cls._config_dir
+
+        # 4) Last resort: the repository-relative config dir
+        cls._config_dir = package_root
+        return cls._config_dir
 
     @classmethod
     def with_env(cls, env: str) -> Config:
