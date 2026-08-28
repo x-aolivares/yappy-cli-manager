@@ -33,12 +33,14 @@ header {
 }
 
 header .brand {
-  font-weight: 700;
-  font-size: 18px;
-  color: var(--accent);
+  font-family: "ValdemaMedium", "Segoe UI", system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 22px;
+  color: #fff;
+  letter-spacing: 0.5px;
 }
 
-header .brand span { color: var(--accent-2); }
+header .brand span { color: var(--yappy-org); }
 
 header nav { margin-left: auto; display: flex; gap: 6px; }
 

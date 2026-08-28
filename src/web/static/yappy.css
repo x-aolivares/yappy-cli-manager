@@ -1,5 +1,14 @@
 /* Paleta de marca de Yappy Comercial — extraída del sitio oficial
    https://www.yappy.com.pa/ (Fusion/Avada theme palette). */
+@font-face {
+  font-family: "ValdemaMedium";
+  src: url("/static/fonts/valdema-medium.woff2") format("woff2"),
+    url("/static/fonts/valdema-medium.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
   /* Azules de marca */
   --yappy-bl: #1677D8;
