@@ -16,6 +16,7 @@
       <a href="/" class="active">Inicio</a>
       <a href="/db-diff">DB Diff</a>
       <a href="/params-diff">Parámetros</a>
+      <a href="/compile">Compilar</a>
     </nav>
   </header>
   <main>
@@ -39,6 +40,14 @@
           Compara un parámetro de SSM Parameter Store o un secreto de Secrets Manager entre dos
           ambientes. Si el valor es JSON, actualiza solo las claves que cambiaron, sin sobreescribir
           el parámetro completo.
+        </p>
+      </a>
+      <a class="card" href="/compile">
+        <h2>Compilar / Ejecutar SQL</h2>
+        <p>
+          Elegís un ambiente y pegás el código SQL/DDL (tabla o stored procedure) para ejecutarlo
+          directo contra esa base: ALTER / CREATE TABLE, CREATE OR REPLACE PROCEDURE, etc.
+          Se compila y te muestra el resultado de cada sentencia.
         </p>
       </a>
     </div>

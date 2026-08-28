@@ -19,6 +19,7 @@ from ..logger import info
 from ..sync import db_objects as obj
 from ..sync import ddl
 from ..sync import diff as db_diff
+from ..sync import exec as syncexec
 from ..sync import params as p
 from ..sync.conn import SyncError, connect
 
@@ -34,6 +35,7 @@ _PAGES = {
     "/": "index.html",
     "/db-diff": "db-diff.html",
     "/params-diff": "params-diff.html",
+    "/compile": "compile.html",
 }
 
 for _route, _fname in _PAGES.items():
@@ -57,6 +59,13 @@ class ParamsDiffRequest(BaseModel):
     env_b: str
     service: str  # "ssm" | "secretsmanager"
     name: str
+
+
+class ExecuteRequest(BaseModel):
+    env: str
+    object_type: str  # "table" | "procedure"
+    schema: str = ""
+    code: str
 
 
 def _env_cfg(env: str) -> Config:
@@ -191,6 +200,32 @@ def api_params_diff(req: ParamsDiffRequest):
         return result.to_dict()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Error de AWS: {exc}") from exc
+
+
+@app.post("/api/execute/sql")
+def api_execute_sql(req: ExecuteRequest):
+    if req.object_type not in ("table", "procedure"):
+        raise HTTPException(status_code=400, detail="object_type debe ser 'table' o 'procedure'")
+    if not req.code or not req.code.strip():
+        raise HTTPException(status_code=400, detail="El código a ejecutar no puede estar vacío.")
+
+    cfg = _env_cfg(req.env)
+
+    try:
+        results = syncexec.execute_sql(cfg, req.schema.strip(), req.code)
+    except syncexec.SyncError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Error de base de datos: {exc}") from exc
+
+    return {
+        "env": req.env,
+        "object_type": req.object_type,
+        "schema": req.schema,
+        "results": [r.__dict__ for r in results],
+        "ok_count": sum(1 for r in results if r.ok),
+        "err_count": sum(1 for r in results if not r.ok),
+    }
 
 
 def run(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = True) -> None:
