@@ -102,7 +102,7 @@ def test_yappy_config_dir_override_wins(tmp_path, monkeypatch):
     alt.mkdir()
     (alt / "env.bravo").write_text("AWS_REGION=eu-west-1\n")
     monkeypatch.setenv("YAPPY_CONFIG_DIR", str(alt))
+    monkeypatch.setattr(Config, "_config_dir", None)
 
-    Config._config_dir = None
     assert Config._get_config_dir() == alt
     assert Config.known_environments() == ["bravo"]
