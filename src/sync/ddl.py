@@ -37,6 +37,16 @@ def create_procedure_script(show_create_b: str) -> str:
     return _strip_definer(show_create_b)
 
 
+def drop_table_script(schema: str, name: str) -> str:
+    """DDL to drop from A a table that only exists in A (matching B)."""
+    return f"DROP TABLE {obj.quote_ident(schema)}.{obj.quote_ident(name)};"
+
+
+def drop_procedure_script(schema: str, name: str) -> str:
+    """DDL to drop from A a procedure that only exists in A (matching B)."""
+    return f"DROP PROCEDURE {obj.quote_ident(schema)}.{obj.quote_ident(name)};"
+
+
 def replace_procedure_script(show_create_b: str) -> str:
     """DDL to replace, in A, a procedure whose body differs from B."""
     sql = _strip_definer(show_create_b)

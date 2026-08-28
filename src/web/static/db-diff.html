@@ -23,19 +23,19 @@
   <main>
     <h1>Diff de Base de Datos</h1>
     <p class="muted">
-      Sentido <strong>B → A</strong>: se comparan las dos regiones y se genera el script para
-      actualizar la región A (la que recibe los cambios de B).
+      Se comparan las dos regiones — <strong>origen → destino</strong> — y se genera el script
+      para actualizar la región de destino con los cambios de la región de origen.
     </p>
 
     <div class="panel">
       <div class="form-grid">
         <div>
-          <label for="env-a">Región A (destino)</label>
-          <select id="env-a"></select>
+          <label for="env-b">Región de Origen</label>
+          <select id="env-b"></select>
         </div>
         <div>
-          <label for="env-b">Región B (fuente)</label>
-          <select id="env-b"></select>
+          <label for="env-a">Región Destino</label>
+          <select id="env-a"></select>
         </div>
         <div>
           <label for="schema">Schema</label>
@@ -53,6 +53,16 @@
           <div class="radio-row">
             <label><input type="radio" name="object-type" value="table" checked /> Tabla</label>
             <label><input type="radio" name="object-type" value="procedure" /> Stored procedure</label>
+          </div>
+          <div style="margin-top:12px;">
+            <label class="chk">
+              <input type="checkbox" id="include-deletes" />
+              Incluir eliminaciones
+            </label>
+            <p class="muted" style="margin-top:4px; font-size:12px;">
+              Por lo general no se eliminan, pero podés activar el DROP para objetos que solo existen
+              en la región destino.
+            </p>
           </div>
         </div>
         <div class="actions" style="align-items:flex-end; justify-content:flex-end;">

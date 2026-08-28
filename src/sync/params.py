@@ -77,6 +77,25 @@ def build_secret_script(name: str, value: str, cfg_a) -> str:
     )
 
 
+def build_ssm_delete_script(name: str, cfg) -> str:
+    return (
+        "aws ssm delete-parameter "
+        f"--name {_shell_quote(name)} "
+        f"--profile {_shell_quote(cfg.profile)} "
+        f"--region {_shell_quote(cfg.region)}"
+    )
+
+
+def build_secret_delete_script(name: str, cfg) -> str:
+    return (
+        "aws secretsmanager delete-secret "
+        f"--secret-id {_shell_quote(name)} "
+        "--force-delete-without-recovery "
+        f"--profile {_shell_quote(cfg.profile)} "
+        f"--region {_shell_quote(cfg.region)}"
+    )
+
+
 def _get(node, key):
     if isinstance(node, dict):
         return node.get(key)
@@ -266,8 +285,22 @@ def _build_script(service: str, name: str, value: str, value_type: str | None, c
     return build_secret_script(name, value, cfg_a)
 
 
-def diff_params(cfg_a, cfg_b, service: str, name: str, env_a: str, env_b: str) -> ParamDiffResult:
-    """Compare a parameter/secret named ``name`` between region A and region B."""
+def diff_params(
+    cfg_a,
+    cfg_b,
+    service: str,
+    name: str,
+    env_a: str,
+    env_b: str,
+    include_deletes: bool = False,
+) -> ParamDiffResult:
+    """Compare a parameter/secret named ``name`` between two regions.
+
+    ``env_b`` is the source (origen) and ``env_a`` the target (destino), so
+    differences always flow ``env_b -> env_a``. When the parameter only exists
+    in the destination, ``include_deletes`` toggles generation of a delete
+    script (alone it is only reported).
+    """
     if service not in ("ssm", "secretsmanager"):
         raise ValueError("service must be 'ssm' or 'secretsmanager'")
     read = read_parameter if service == "ssm" else read_secret
@@ -301,15 +334,33 @@ def diff_params(cfg_a, cfg_b, service: str, name: str, env_a: str, env_b: str) -
             status="missing_in_a",
             value_b=value_b, value_type_b=type_b,
             script=_build_script(service, name, value_b, type_b, cfg_a),
-            notes=[f"Existe solo en {env_b} — debe crearse en {env_a}."],
+            notes=[f"Existe solo en {env_b} (origen) — debe crearse en {env_a} (destino)."],
         )
 
     if value_b is None:
+        if include_deletes:
+            script = (
+                build_secret_delete_script(name, cfg_a)
+                if service == "secretsmanager"
+                else build_ssm_delete_script(name, cfg_a)
+            )
+            notes = [
+                f"Existe solo en {env_a} (destino) — se elimina para que quede "
+                f"igual a {env_b} (origen)."
+            ]
+        else:
+            script = None
+            notes = [
+                f"Existe en {env_a} (destino) pero no en {env_b} (origen) — "
+                "no hay nada que sincronizar (origen → destino). "
+                "Marcá la opción 'Incluir eliminaciones' para generar el borrado."
+            ]
         return ParamDiffResult(
             env_a=env_a, env_b=env_b, service=service, name=name,
             status="missing_in_b",
             value_a=value_a, value_type_a=type_a,
-            notes=[f"Existe en {env_a} pero no en {env_b} — no hay nada que sincronizar (B→A)."],
+            script=script,
+            notes=notes,
         )
 
     status, is_json, changes, patch_value = compare_values(value_a, value_b)
@@ -334,7 +385,7 @@ def diff_params(cfg_a, cfg_b, service: str, name: str, env_a: str, env_b: str) -
         changes=changes,
         patch_value=patch_value,
         script=_build_script(service, name, new_value, type_b, cfg_a),
-        notes=[f"Hay cambios de {env_b} → {env_a}."],
+        notes=[f"Hay cambios de {env_b} (origen) → {env_a} (destino)."],
     )
 
 # --- Batch reader (web "Leer Parámetros" section) -------------------------

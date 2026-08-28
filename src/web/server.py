@@ -28,7 +28,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 app = FastAPI(
     title="Yappy Region Sync",
-    description="Diff de DB (tablas/SP) y de parámetros SSM/Secrets entre ambientes (B → A)",
+    description="Diff de DB (tablas/SP) y de parámetros SSM/Secrets entre regiones de origen y destino",
     version="2.0.0",
 )
 
@@ -54,6 +54,7 @@ class DbDiffRequest(BaseModel):
     schema_name: str
     object_type: str  # "table" | "procedure"
     object_name: str
+    include_deletes: bool = False
 
 
 class ParamsDiffRequest(BaseModel):
@@ -61,6 +62,7 @@ class ParamsDiffRequest(BaseModel):
     env_b: str
     service: str  # "ssm" | "secretsmanager"
     name: str
+    include_deletes: bool = False
 
 
 class ExecuteRequest(BaseModel):
@@ -152,11 +154,23 @@ def api_db_diff(req: DbDiffRequest):
                 notes = [f"Existe solo en {req.env_b} — debe crearse en {req.env_a}."]
             elif code_b is None:
                 status = "missing_in_b"
-                script = None
-                notes = [
-                    f"Existe en {req.env_a} pero no en {req.env_b} — "
-                    "no hay nada que sincronizar (B→A)."
-                ]
+                if req.include_deletes:
+                    script = (
+                        ddl.drop_procedure_script(schema, name)
+                        if req.object_type == "procedure"
+                        else ddl.drop_table_script(schema, name)
+                    )
+                    notes = [
+                        f"Existe en {req.env_a} (destino) pero no en {req.env_b} (origen) — "
+                        "se elimina para que la región destino quede igual a la de origen."
+                    ]
+                else:
+                    script = None
+                    notes = [
+                        f"Existe en {req.env_a} (destino) pero no en {req.env_b} (origen) — "
+                        "no hay nada que sincronizar (origen → destino). "
+                        "Marcá la opción 'Incluir eliminaciones' para generar el DROP."
+                    ]
             elif (
                 obj.normalize_ddl(code_a) == obj.normalize_ddl(code_b)
                 and not col_ops
@@ -214,7 +228,10 @@ def api_params_diff(req: ParamsDiffRequest):
     cfg_b = _env_cfg(req.env_b)
 
     try:
-        result = p.diff_params(cfg_a, cfg_b, req.service, req.name, req.env_a, req.env_b)
+        result = p.diff_params(
+            cfg_a, cfg_b, req.service, req.name, req.env_a, req.env_b,
+            include_deletes=req.include_deletes,
+        )
         return result.to_dict()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Error de AWS: {exc}") from exc

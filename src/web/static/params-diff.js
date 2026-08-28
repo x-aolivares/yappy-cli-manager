@@ -3,7 +3,7 @@ const envB = document.getElementById("env-b");
 const compareBtn = document.getElementById("compare-btn");
 const result = document.getElementById("result");
 
-loadEnvs(envA, envB).catch((e) => {
+loadEnvs(envB, envA).catch((e) => {
   result.innerHTML = renderError("No se pudieron cargar los ambientes: " + e.message);
 });
 
@@ -16,7 +16,7 @@ function render(data) {
          <span>${statusBadge(data.status)}</span>
          <span class="muted">${escapeHtml(data.name)}</span>
          <span class="muted">${escapeHtml(data.service)}</span>
-         <span class="muted">${data.env_a} → ${data.env_b}</span>
+         <span class="muted">${escapeHtml(data.env_b)} → ${escapeHtml(data.env_a)}</span>
        </div>` +
       (data.notes && data.notes.length
         ? data.notes.map((n) => `<div class="note">• ${escapeHtml(n)}</div>`).join("")
@@ -29,17 +29,17 @@ function render(data) {
     return;
   }
 
-  const showA = data.value_a ?? "—";
-  const showB = data.value_b ?? "—";
+  const showA = data.value_a ?? "";
+  const showB = data.value_b ?? "";
   parts.push(
     `<div class="columns">
        <div class="panel">
-         <div class="section-title"><strong>Región A — ${escapeHtml(data.env_a)}</strong></div>
-         ${preBlock(showA, "No existe en la región A")}
+         <div class="section-title"><strong>Región de Origen — ${escapeHtml(data.env_b)}</strong></div>
+         ${preBlock(showB, "No existe en la región de origen")}
        </div>
        <div class="panel">
-         <div class="section-title"><strong>Región B — ${escapeHtml(data.env_b)}</strong></div>
-         ${preBlock(showB, "No existe en la región B")}
+         <div class="section-title"><strong>Región Destino — ${escapeHtml(data.env_a)}</strong></div>
+         ${preBlock(showA, "No existe en la región destino")}
        </div>
      </div>`,
   );
@@ -51,38 +51,40 @@ function render(data) {
           `<tr>
              <td><code>${escapeHtml(c.path)}</code></td>
              <td><span class="badge ${c.op === "removed" ? "missing_in_b" : "different"}">${escapeHtml(c.op)}</span></td>
-             <td>${formatValue(c.old)}</td>
              <td>${formatValue(c.new)}</td>
+             <td>${formatValue(c.old)}</td>
            </tr>`,
       )
       .join("");
     parts.push(
       `<div class="panel">
          <div class="section-title"><strong>Cambios</strong>${data.is_json ? '<span class="muted">(diferencias JSON por clave)</span>' : ""}</div>
-         <table><thead><tr><th>Ruta</th><th>Operación</th><th>Región A</th><th>Región B</th></tr></thead>
+         <table><thead><tr><th>Ruta</th><th>Operación</th><th>Región de Origen</th><th>Región Destino</th></tr></thead>
          <tbody>${rows}</tbody></table>
        </div>`,
     );
   }
 
-  if (data.status === "different" || data.status === "missing_in_a") {
+  if (data.script && ["different", "missing_in_a", "missing_in_b"].includes(data.status)) {
     const patchSection = data.is_json
       ? `<div class="panel" style="margin-top:14px;">
-           <div class="section-title"><strong>Valor a aplicar en ${escapeHtml(data.env_a)}</strong>
+           <div class="section-title"><strong>Valor a aplicar en la región destino (${escapeHtml(data.env_a)})</strong>
            <span class="muted">(solo claves cambiadas)</span></div>
            ${preBlock(data.patch_value, "—")}
          </div>`
       : "";
     const scriptSection = `<div class="panel script-block" style="margin-top:14px;">
-        <div class="section-title"><strong>Comando para ${escapeHtml(data.env_a)}</strong></div>
+        <div class="section-title"><strong>${data.status === "missing_in_b" ? "Comando de eliminación" : "Comando de actualización"} para la región destino (${escapeHtml(data.env_a)})</strong></div>
         ${preBlock(data.script || "No hay comando que ejecutar.", "—")}
       </div>`;
 
     parts.push(
-      `<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;">
-         ${scriptSection}
-         ${patchSection}
-       </div>`,
+      patchSection
+        ? `<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;">
+             ${scriptSection}
+             ${patchSection}
+           </div>`
+        : scriptSection,
     );
     result.innerHTML = parts.join("");
     if (data.script) {
@@ -109,6 +111,7 @@ compareBtn.addEventListener("click", async () => {
     env_b: envB.value,
     service: document.getElementById("service").value,
     name: document.getElementById("name").value.trim(),
+    include_deletes: document.getElementById("include-deletes").checked,
   };
 
   if (!payload.env_a || !payload.env_b) {
@@ -124,7 +127,7 @@ compareBtn.addEventListener("click", async () => {
   compareBtn.disabled = true;
   result.innerHTML = `<div class="panel"><span class="spinner"></span>Consultando ${escapeHtml(
     payload.name,
-  )} en ${payload.env_a} y ${payload.env_b}...</div>`;
+  )} de origen ${payload.env_b} a destino ${payload.env_a}...</div>`;
 
   try {
     const res = await fetch("/api/params/diff", {

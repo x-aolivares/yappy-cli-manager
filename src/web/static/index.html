@@ -21,10 +21,11 @@
     </nav>
   </header>
   <main>
-    <h1>Sincronización entre regiones AWS (B → A)</h1>
+    <h1>Sincronización entre regiones AWS</h1>
     <p class="muted">
-      Región A = región destino (se actualiza) · Región B = región fuente (contiene los cambios nuevos).
-      Las regiones son los ambientes definidos en <code>config/env.*</code> de yappy-cli-manager.
+      Se comparan la <strong>región de origen</strong> (izquierda, contiene los cambios nuevos) y la
+      <strong>región destino</strong> (derecha, se actualiza). Las regiones son los ambientes
+      definidos en <code>config/env.*</code> de yappy-cli-manager.
     </p>
     <div class="cards">
       <a class="card" href="/db-diff">

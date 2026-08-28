@@ -106,6 +106,33 @@ def test_build_secret_script():
     assert "--region 'us-west-1'" in script
 
 
+def test_build_ssm_delete_script():
+    class FakeCfg:
+        profile = "dev-profile"
+        region = "us-west-2"
+
+    script = p.build_ssm_delete_script("/app/rate", FakeCfg())
+
+    assert script.startswith("aws ssm delete-parameter")
+    assert "--name '/app/rate'" in script
+    assert "--profile 'dev-profile'" in script
+    assert "--region 'us-west-2'" in script
+
+
+def test_build_secret_delete_script():
+    class FakeCfg:
+        profile = "qa-profile"
+        region = "us-west-1"
+
+    script = p.build_secret_delete_script("/app/secret", FakeCfg())
+
+    assert script.startswith("aws secretsmanager delete-secret")
+    assert "--secret-id '/app/secret'" in script
+    assert "--force-delete-without-recovery" in script
+    assert "--profile 'qa-profile'" in script
+    assert "--region 'us-west-1'" in script
+
+
 def test_diff_params_missing_in_a(monkeypatch):
     class FakeCfg:
         profile = "a-profile"
@@ -151,3 +178,62 @@ def test_diff_params_equal(monkeypatch):
     assert result.status == "equal"
     assert result.script is None
     assert result.value_a == "same-value"
+
+
+def _patch_reads(monkeypatch, absent):
+    """fake_any returns a value (with type) except for the absent region."""
+
+    def fake_any(cfg, name):
+        if cfg.name == absent:
+            raise p.ParamNotFound(name)
+        return ("20", "String")
+
+    monkeypatch.setattr(p, "read_parameter", fake_any)
+    monkeypatch.setattr(
+        p, "read_secret", lambda cfg, name: fake_any(cfg, name)[0]
+    )
+
+
+def test_diff_params_missing_in_b_reports_only_by_default(monkeypatch):
+    class FakeCfg:
+        profile = "a-profile"
+        region = "us-east-1"
+
+        def __init__(self, name):
+            self.name = name
+
+    _patch_reads(monkeypatch, absent="b")
+    cfg_a, cfg_b = FakeCfg("a"), FakeCfg("b")
+
+    result = p.diff_params(cfg_a, cfg_b, "ssm", "/x", "a", "b")
+
+    assert result.status == "missing_in_b"
+    assert result.value_a == "20"
+    assert result.script is None
+    assert "no hay nada que sincronizar" in result.notes[0]
+
+
+def test_diff_params_missing_in_b_generates_delete_script(monkeypatch):
+    class FakeCfg:
+        profile = "a-profile"
+        region = "us-east-1"
+
+        def __init__(self, name):
+            self.name = name
+
+    _patch_reads(monkeypatch, absent="b")
+    cfg_a, cfg_b = FakeCfg("a"), FakeCfg("b")
+
+    ssm = p.diff_params(cfg_a, cfg_b, "ssm", "/x", "a", "b", include_deletes=True)
+    secret = p.diff_params(
+        cfg_a, cfg_b, "secretsmanager", "/s", "a", "b", include_deletes=True
+    )
+
+    assert ssm.script.startswith("aws ssm delete-parameter")
+    assert "--name '/x'" in ssm.script
+    assert "--profile 'a-profile'" in ssm.script
+    assert "se elimina" in ssm.notes[0]
+
+    assert secret.script.startswith("aws secretsmanager delete-secret")
+    assert "--secret-id '/s'" in secret.script
+    assert "--force-delete-without-recovery" in secret.script

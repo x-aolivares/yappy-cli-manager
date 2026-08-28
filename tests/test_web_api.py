@@ -2,8 +2,17 @@ import pytest
 from fastapi import HTTPException
 
 from src.config import Config
+from src.sync import db_objects as obj
 from src.sync import params as p
-from src.web.server import api_envs, api_params_read, ReadParamsEntry
+from src.web.server import (
+    api_envs,
+    api_db_diff,
+    api_params_diff,
+    api_params_read,
+    DbDiffRequest,
+    ParamsDiffRequest,
+    ReadParamsEntry,
+)
 
 
 class _FakeConfig:
@@ -94,3 +103,89 @@ def test_api_params_read_empty_list_returns_400(monkeypatch):
 
     assert exc_info.value.status_code == 400
     assert "vacía" in str(exc_info.value.detail)
+
+
+class _CaptureDiff:
+    def __init__(self, fake_result):
+        self.fake_result = fake_result
+        self.kwargs = None
+
+    def __call__(self, *args, **kwargs):
+        self.kwargs = kwargs
+        return self.fake_result
+
+
+def test_api_params_diff_forwards_include_deletes(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    base = p.ParamDiffResult(
+        env_a="dev", env_b="qa", service="ssm", name="/x",
+        status="missing_in_b", value_a="20", value_type_a="String",
+    )
+    capture = _CaptureDiff(base)
+    monkeypatch.setattr(p, "diff_params", capture)
+
+    api_params_diff(
+        ParamsDiffRequest(env_a="dev", env_b="qa", service="ssm", name="/x")
+    )
+    assert capture.kwargs["include_deletes"] is False
+
+    payload = api_params_diff(
+        ParamsDiffRequest(
+            env_a="dev", env_b="qa", service="ssm", name="/x",
+            include_deletes=True,
+        )
+    )
+    assert capture.kwargs["include_deletes"] is True
+    assert payload["status"] == "missing_in_b"
+
+
+class _FakeConn:
+    def __init__(self, env):
+        self.env = env
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _fake_connect(cfg):
+    return _FakeConn(cfg._env)
+
+
+def test_api_db_diff_missing_in_b_respects_include_deletes(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+    monkeypatch.setattr("src.web.server.connect", _fake_connect)
+    monkeypatch.setattr(obj, "show_create_table",
+                        lambda conn, schema, name: (
+                            "CREATE TABLE ..." if conn.env == "dev" else None
+                        ))
+    monkeypatch.setattr(obj, "table_columns", lambda conn, schema, name: [])
+    monkeypatch.setattr(obj, "table_indexes", lambda conn, schema, name: [])
+
+    req = DbDiffRequest(
+        env_a="dev", env_b="qa", schema_name="yappy", object_type="table",
+        object_name="orders", include_deletes=True,
+    )
+    payload = api_db_diff(req)
+
+    assert payload["status"] == "missing_in_b"
+    assert payload["script"] == "DROP TABLE `yappy`.`orders`;"
+
+    req_no_delete = DbDiffRequest(
+        env_a="dev", env_b="qa", schema_name="yappy", object_type="table",
+        object_name="orders",
+    )
+    payload_no_delete = api_db_diff(req_no_delete)
+
+    assert payload_no_delete["status"] == "missing_in_b"
+    assert payload_no_delete["script"] is None
+    assert "no hay nada que sincronizar" in payload_no_delete["notes"][0]

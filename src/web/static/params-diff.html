@@ -23,19 +23,20 @@
   <main>
     <h1>Diff de Parámetros / Secretos</h1>
     <p class="muted">
-      Compara un parámetro entre <strong>B</strong> (fuente) y <strong>A</strong> (destino). Si el
-      valor es JSON solo se actualizan las claves que cambiaron; el resto del parámetro queda intacto.
+      Compara un parámetro entre la región de <strong>origen</strong> y la de <strong>destino</strong>.
+      Si el valor es JSON solo se actualizan las claves que cambiaron; el resto del parámetro queda intacto.
+      Los valores que solo existen en destino se eliminan únicamente si marcás la opción.
     </p>
 
     <div class="panel">
       <div class="form-grid">
         <div>
-          <label for="env-a">Región A (destino)</label>
-          <select id="env-a"></select>
+          <label for="env-b">Región de Origen</label>
+          <select id="env-b"></select>
         </div>
         <div>
-          <label for="env-b">Región B (fuente)</label>
-          <select id="env-b"></select>
+          <label for="env-a">Región Destino</label>
+          <select id="env-a"></select>
         </div>
         <div>
           <label for="service">Servicio</label>
@@ -50,6 +51,11 @@
         </div>
       </div>
       <div class="actions" style="justify-content:flex-end;">
+        <label class="chk">
+          <input type="checkbox" id="include-deletes" />
+          Incluir eliminaciones
+          <span class="muted" style="font-size:12px;">(por lo general no se eliminan)</span>
+        </label>
         <button id="compare-btn">Comparar</button>
       </div>
     </div>
