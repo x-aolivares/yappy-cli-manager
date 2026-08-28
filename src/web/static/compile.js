@@ -70,7 +70,7 @@ compileBtn.addEventListener("click", async () => {
   const payload = {
     env: envSel.value,
     object_type: typeInput ? typeInput.value : "table",
-    schema: document.getElementById("schema").value.trim(),
+    schema_name: document.getElementById("schema").value.trim(),
     code: codeInput.value,
   };
 

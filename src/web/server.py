@@ -5,6 +5,7 @@ Serves two static pages (DB diff and parameter/secret diff) plus a JSON API.
 
 from __future__ import annotations
 
+import os
 import threading
 import webbrowser
 from pathlib import Path
@@ -64,7 +65,7 @@ class ParamsDiffRequest(BaseModel):
 class ExecuteRequest(BaseModel):
     env: str
     object_type: str  # "table" | "procedure"
-    schema: str = ""
+    schema_name: str = ""
     code: str
 
 
@@ -79,14 +80,24 @@ def _env_cfg(env: str) -> Config:
 
 @app.get("/api/envs")
 def api_envs():
-    result = []
-    for env in Config.known_environments():
+    config_dir = Config._get_config_dir()
+    found = Config.known_environments()
+    environments = []
+    for env in found:
+        entry = {"env": env, "region": None, "profile": None, "load_error": None}
         try:
             cfg = Config.with_env(env)
-        except ValueError:
-            continue
-        result.append({"env": env, "region": cfg.region, "profile": cfg.profile})
-    return {"environments": result}
+            entry["region"] = cfg.region
+            entry["profile"] = cfg.profile
+        except Exception as exc:
+            # Never drop an environment: keep it visible and explain the failure.
+            entry["load_error"] = str(exc)
+        environments.append(entry)
+    return {
+        "config_dir": str(config_dir),
+        "override_set": bool(os.environ.get("YAPPY_CONFIG_DIR")),
+        "environments": environments,
+    }
 
 
 def _table_structure(conn, schema: str, name: str):
@@ -212,7 +223,7 @@ def api_execute_sql(req: ExecuteRequest):
     cfg = _env_cfg(req.env)
 
     try:
-        results = syncexec.execute_sql(cfg, req.schema.strip(), req.code)
+        results = syncexec.execute_sql(cfg, req.schema_name.strip(), req.code)
     except syncexec.SyncError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -221,7 +232,7 @@ def api_execute_sql(req: ExecuteRequest):
     return {
         "env": req.env,
         "object_type": req.object_type,
-        "schema": req.schema,
+        "schema_name": req.schema_name,
         "results": [r.__dict__ for r in results],
         "ok_count": sum(1 for r in results if r.ok),
         "err_count": sum(1 for r in results if not r.ok),
@@ -234,6 +245,11 @@ def run(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = True) ->
 
     config_dir = Config._get_config_dir()
     envs = Config.known_environments()
+    if os.environ.get("YAPPY_CONFIG_DIR"):
+        info(
+            f"YAPPY_CONFIG_DIR override activo: "
+            f"{os.environ['YAPPY_CONFIG_DIR']} -> {config_dir}"
+        )
     if not config_dir.is_dir() or not envs:
         info(
             "ADVERTENCIA: no se encontraron ambientes. "

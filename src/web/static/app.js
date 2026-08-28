@@ -12,14 +12,17 @@ async function loadEnvs(selectA, selectB) {
   const data = await res.json();
   const envs = Array.isArray(data.environments) ? data.environments : [];
   if (!envs.length) {
-    throw new Error("no se encontraron ambientes en config/env.*");
+    const cfg = data.config_dir ? ` (config_dir: ${escapeHtml(data.config_dir)})` : "";
+    throw new Error("no se encontraron ambientes en config/env.*" + cfg);
   }
-  const opts = envs.map(
-    (e) =>
-      `<option value="${escapeHtml(e.env)}">${escapeHtml(e.env)} — ${escapeHtml(
-        e.region,
-      )} (${escapeHtml(e.profile)})</option>`,
-  );
+  const opts = envs.map((e) => {
+    const note = e.load_error
+      ? ` (error: ${escapeHtml(e.load_error)})`
+      : "";
+    return `<option value="${escapeHtml(e.env)}">${escapeHtml(e.env)} — ${escapeHtml(
+      e.region || "",
+    )} (${escapeHtml(e.profile || "")})${note}</option>`;
+  });
   [selectA, selectB].forEach((sel, i) => {
     sel.innerHTML = opts.join("");
     sel.value = envs.length >= 2 ? envs[i].env : envs[0].env;
