@@ -66,19 +66,36 @@ readBtn.addEventListener("click", async () => {
   }
 
   let entries;
-  try {
-    entries = JSON.parse(entriesInput.value);
-  } catch (e) {
-    result.innerHTML = renderError(
-      "El JSON no es válido: " + e.message + ' — formato esperado: [{ "key": "/path", "is_secret": false }]',
-    );
-    return;
-  }
-  if (!Array.isArray(entries) || entries.length === 0) {
-    result.innerHTML = renderError(
-      'El JSON debe ser una lista, por ejemplo: [{ "key": "/yappy/dev/rate", "is_secret": false }]',
-    );
-    return;
+  const raw = entriesInput.value.trim();
+  if (raw.startsWith("[")) {
+    try {
+      entries = JSON.parse(raw);
+    } catch (e) {
+      result.innerHTML = renderError(
+        "El JSON no es válido: " +
+          e.message +
+          ' — formato esperado: [{ "key": "/path", "is_secret": false }] o una clave por línea',
+      );
+      return;
+    }
+    if (!Array.isArray(entries) || entries.length === 0) {
+      result.innerHTML = renderError(
+        'El JSON debe ser una lista, por ejemplo: [{ "key": "/yappy/dev/rate", "is_secret": false }]',
+      );
+      return;
+    }
+  } else {
+    entries = raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((key) => ({ key, is_secret: false }));
+    if (entries.length === 0) {
+      result.innerHTML = renderError(
+        'Pegá una clave por línea, por ejemplo: /prod/ecommerce/db/master_url — o un JSON como [{ "key": "/path", "is_secret": false }]',
+      );
+      return;
+    }
   }
 
   readBtn.disabled = true;

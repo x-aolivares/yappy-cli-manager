@@ -178,6 +178,58 @@ def test_read_many_key_wins_over_name(monkeypatch):
     assert results[0]["key"] == "/k" and results[0]["ok"]
 
 
+def test_read_many_plain_strings_auto_detect_secrets(monkeypatch):
+    conn = _FakeConn(
+        ssm_store={
+            "/prod/ecommerce/db/master_url": ("jdbc:postgresql://db", "String"),
+            "/prod/auth/recaptcha/site_key": ("6Lc", "String"),
+        },
+        secret_store={
+            "/prod/payment/stripe/secret_key": "sk_live_123",
+            "/prod/notification/sendgrid/api_key": "SG.abc",
+        },
+    )
+    _monkey_session(monkeypatch, conn)
+
+    results = p.read_many(
+        _cfg(),
+        [
+            "/prod/ecommerce/db/master_url",
+            "/prod/payment/stripe/secret_key",
+            "/prod/auth/recaptcha/site_key",
+            "/prod/notification/sendgrid/api_key",
+            "/prod/network/ecs/cluster_name",
+        ],
+    )
+
+    assert [r["key"] for r in results] == [
+        "/prod/ecommerce/db/master_url",
+        "/prod/payment/stripe/secret_key",
+        "/prod/auth/recaptcha/site_key",
+        "/prod/notification/sendgrid/api_key",
+        "/prod/network/ecs/cluster_name",
+    ]
+    assert [r["is_secret"] for r in results] == [False, True, False, True, False]
+    assert [r["service"] for r in results] == [
+        "ssm", "secretsmanager", "ssm", "secretsmanager", "ssm",
+    ]
+    assert results[1]["value"] == "sk_live_123"
+    assert results[3]["value"] == "SG.abc"
+    assert not results[4]["ok"] and results[4]["error"] == "No existe"
+    assert results[1]["value_type"] is None
+
+
+def test_read_many_plain_strings_trim_whitespace_and_missing(monkeypatch):
+    conn = _FakeConn(ssm_store={"/a": ("v", "String")})
+    _monkey_session(monkeypatch, conn)
+
+    results = p.read_many(_cfg(), ["  /a  ", "/missing"])
+
+    assert [r["key"] for r in results] == ["/a", "/missing"]
+    assert results[0]["ok"] and results[0]["value"] == "v"
+    assert not results[1]["ok"] and results[1]["error"] == "No existe"
+
+
 def test_read_many_validation_errors():
     with pytest.raises(ValueError):
         p.read_many(_cfg(), [])

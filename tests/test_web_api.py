@@ -99,6 +99,30 @@ def test_api_params_read_ok(monkeypatch):
     assert payload["results"][1]["service"] == "secretsmanager"
 
 
+def test_api_params_read_accepts_plain_key_strings(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+    received = []
+    monkeypatch.setattr(
+        p,
+        "read_many",
+        staticmethod(lambda cfg, entries: received.append(entries) or []),
+    )
+
+    payload = api_params_read(
+        env="dev",
+        body=["/prod/ecommerce/db/master_url", "/prod/payment/stripe/secret_key"],
+    )
+
+    assert received == [
+        ["/prod/ecommerce/db/master_url", "/prod/payment/stripe/secret_key"]
+    ]
+    assert payload["ok_count"] == len(payload["results"]) == 0
+    assert payload["err_count"] == 0
+
+
 def test_api_params_read_empty_list_returns_400(monkeypatch):
     monkeypatch.setattr(
         Config, "known_environments", classmethod(lambda cls: ["dev"])

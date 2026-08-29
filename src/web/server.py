@@ -491,10 +491,11 @@ def api_params_get(env: str, name: str):
 
 
 @app.post("/api/params/read")
-def api_params_read(env: str, body: list[ReadParamsEntry]):
+def api_params_read(env: str, body: list[ReadParamsEntry | str]):
     cfg = _env_cfg(env)
     try:
-        results = p.read_many(cfg, [e.model_dump() for e in body])
+        entries = [e if isinstance(e, str) else e.model_dump() for e in body]
+        results = p.read_many(cfg, entries)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

@@ -618,20 +618,22 @@ def _normalize_entries(entries) -> list[dict]:
         raise ValueError(f"Máximo 100 entradas por pedido (recibiste {len(entries)}).")
     norms = []
     for entry in entries:
-        if not isinstance(entry, dict):
+        if isinstance(entry, str):
+            name, is_secret = entry, False
+        elif isinstance(entry, dict):
+            name = entry.get("key") or entry.get("name")
+            is_secret = bool(entry.get("is_secret", False))
+        else:
             raise ValueError(
-                "Cada entrada debe ser un objeto: "
+                "Cada entrada debe ser una clave de texto o un objeto "
                 "{'key': '<nombre>', 'is_secret': true|false}."
             )
-        name = entry.get("key") or entry.get("name")
         if not name or not str(name).strip():
-            raise ValueError(
-                "Cada entrada necesita 'key' (o 'name') no vacío."
-            )
+            raise ValueError("Cada entrada necesita una clave no vacía.")
         norms.append(
             {
                 "name": str(name).strip(),
-                "is_secret": bool(entry.get("is_secret", False)),
+                "is_secret": is_secret,
             }
         )
     return norms
@@ -650,18 +652,18 @@ def _read_ssm_batch(client, names: list[str]) -> dict[str, tuple[str, str]]:
 def read_many(cfg, entries) -> list[dict]:
     """Read a batch of SSM parameters / Secrets Manager secrets for an environment.
 
-    Every entry is ``{"key" (or "name"), "is_secret"}``. If ``is_secret`` is
-    true the value comes from Secrets Manager, otherwise from SSM. Results are
-    returned in the same order as the input; a failure on one entry never stops
-    the rest.
+    Every entry is ``{"key" (or "name"), "is_secret"}`` or a plain key string.
+    With ``is_secret: true`` the value comes from Secrets Manager. Non-secret
+    entries are read from SSM; if a key isn't found there it's retried against
+    Secrets Manager (auto-detect), so callers can pass a plain list of keys
+    without knowing which are secrets. Results are returned in the same order as
+    the input; a failure on one entry never stops the rest.
     """
     norms = _normalize_entries(entries)
 
     needs_ssm = any(not n["is_secret"] for n in norms)
-    needs_sms = any(n["is_secret"] for n in norms)
     session = _boto_session(cfg.profile, cfg.region)
     ssm = session.client("ssm") if needs_ssm else None
-    sms = session.client("secretsmanager") if needs_sms else None
 
     ssm_names = [n["name"] for n in norms if not n["is_secret"]]
     found_ssm: dict[str, tuple[str, str]] = {}
@@ -674,6 +676,7 @@ def read_many(cfg, entries) -> list[dict]:
 
     results: list[dict] = []
     secret_pending: list[tuple[int, str]] = []
+    auto_pending: list[tuple[int, str]] = []
     for n in norms:
         base = {
             "key": n["name"],
@@ -686,18 +689,20 @@ def read_many(cfg, entries) -> list[dict]:
         }
         if n["is_secret"]:
             secret_pending.append((len(results), n["name"]))
-            results.append(base)
+        elif ssm_error is not None:
+            base["error"] = ssm_error
+        elif n["name"] in found_ssm:
+            value, vtype = found_ssm[n["name"]]
+            base.update(value=value, value_type=vtype, ok=True)
         else:
-            if ssm_error is not None:
-                base["error"] = ssm_error
-            elif n["name"] in found_ssm:
-                value, vtype = found_ssm[n["name"]]
-                base.update(value=value, value_type=vtype, ok=True)
-            else:
-                base["error"] = "No existe"
-            results.append(base)
+            base["error"] = "No existe"
+            auto_pending.append((len(results), n["name"]))
+        results.append(base)
 
-    if sms is not None and secret_pending:
+    sm_pending = secret_pending + auto_pending
+    if sm_pending:
+        sms = session.client("secretsmanager")
+
         def _read_secret(name: str) -> tuple[str | None, str | None]:
             try:
                 resp = sms.get_secret_value(SecretId=name)
@@ -711,14 +716,24 @@ def read_many(cfg, entries) -> list[dict]:
                 return None, f"El secreto '{name}' es binario; solo se soportan string."
             return None, f"El secreto '{name}' no tiene valor."
 
-        names = [name for _, name in secret_pending]
+        names = [name for _, name in sm_pending]
         with ThreadPoolExecutor(max_workers=min(8, len(names))) as pool:
             outcomes = list(pool.map(_read_secret, names))
-        for (idx, _name), (value, error) in zip(secret_pending, outcomes):
-            results[idx]["value"] = value
-            if error is None and value is not None:
-                results[idx]["ok"] = True
+        auto_indices = {idx for idx, _ in auto_pending}
+        for (idx, _name), (value, error) in zip(sm_pending, outcomes):
+            if idx in auto_indices:
+                if error is None and value is not None:
+                    results[idx].update(
+                        value=value,
+                        ok=True,
+                        is_secret=True,
+                        service="secretsmanager",
+                    )
             else:
-                results[idx]["error"] = error
+                results[idx]["value"] = value
+                if error is None and value is not None:
+                    results[idx]["ok"] = True
+                else:
+                    results[idx]["error"] = error
 
     return results

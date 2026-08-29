@@ -25,9 +25,11 @@
   <main>
     <h1>Leer Parámetros / Secretos</h1>
     <p class="muted">
-      Elegí el ambiente y pegá una lista de parámetros como JSON. Cada entrada con
-      <code>is_secret: true</code> se lee de <strong>Secrets Manager</strong>; el resto de
-      <strong>SSM Parameter Store</strong>. Los valores se muestran tal cual.
+      Elegí el ambiente y pegá las claves, <strong>una por línea</strong> (se detectan los
+      secretos automáticamente), o como JSON con <code>is_secret: true|false</code>. Lo marcado
+      como secreto se lee de <strong>Secrets Manager</strong>; el resto de <strong>SSM Parameter
+      Store</strong> (con respaldo automático en Secrets Manager si no existe en SSM). Los
+      valores se muestran tal cual.
     </p>
 
     <div class="panel">
@@ -36,9 +38,10 @@
         <select id="env" style="max-width: 420px;"></select>
       </div>
 
-      <label for="entries" style="margin-top:16px;">Lista de parámetros (JSON)</label>
+      <label for="entries" style="margin-top:16px;">Lista de parámetros</label>
       <textarea id="entries" spellcheck="false"
-        placeholder='[{ "key": "/yappy/dev/rate", "is_secret": false }]'></textarea>
+        placeholder="/prod/ecommerce/db/master_url
+/prod/payment/stripe/secret_key"></textarea>
 
       <div class="actions" style="justify-content:flex-end; margin-top:10px;">
         <button id="read-btn">Leer valores</button>
