@@ -8,6 +8,11 @@ const typeSel = document.getElementById("value-type");
 const saveBtn = document.getElementById("save-btn");
 const result = document.getElementById("result");
 
+function autoresize(el) {
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+
 async function loadEnvs() {
   const res = await fetch("/api/envs");
   const data = await res.json();
@@ -40,6 +45,7 @@ async function readParam() {
     meta.textContent = `${env} — ${data.value_type}`;
     editor.hidden = false;
     result.innerHTML = "";
+    autoresize(valueInput);
   } catch (e) {
     editor.hidden = true;
     result.innerHTML = renderError("Error: " + e.message);
@@ -96,6 +102,7 @@ saveBtn.addEventListener("click", saveParam);
 nameInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") readParam();
 });
+valueInput.addEventListener("input", () => autoresize(valueInput));
 
 loadEnvs().catch((e) => {
   envSel.innerHTML = `<option value="">(error: ${escapeHtml(e.message)})</option>`;
