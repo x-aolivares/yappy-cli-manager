@@ -3,7 +3,7 @@
   --panel: var(--yappy-ink2);
   --border: var(--yappy-ink3);
   --text: var(--yappy-gry);
-  --muted: var(--yappy-gry2);
+  --muted: #FFFFFF;
   --accent: var(--yappy-bl);
   --accent-2: var(--yappy-org);
   --ok: var(--yappy-grn);
