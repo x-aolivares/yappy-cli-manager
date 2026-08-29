@@ -190,7 +190,10 @@ def _build_web_frontend() -> None:
     result = subprocess.run(
         [npm, "run", "build"],
         cwd=str(frontend),
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     if result.returncode != 0:
         die(f"Falló el build del frontend:\n{result.stdout}\n{result.stderr}")

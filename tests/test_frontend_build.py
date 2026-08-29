@@ -12,6 +12,16 @@ def _make_frontend(tmp_path: Path) -> Path:
     return fe
 
 
+def _stamp(frontend: Path, index: int, sources: int) -> None:
+    """Fijar mtime: index y fuentes; fuentes anterior al index si sources < index."""
+    import os
+
+    index_path = frontend / "dist" / "browser" / "index.html"
+    os.utime(index_path, (index, index))
+    for f in [frontend / "package.json", frontend / "src" / "main.ts"]:
+        os.utime(f, (sources, sources))
+
+
 def test_frontend_needs_build_when_dist_missing(tmp_path):
     fe = _make_frontend(tmp_path)
     assert (fe / "dist" / "browser" / "index.html").exists() is False
@@ -20,22 +30,15 @@ def test_frontend_needs_build_when_dist_missing(tmp_path):
 
 def test_frontend_needs_build_when_source_newer_than_dist(tmp_path):
     fe = _make_frontend(tmp_path)
-    index = fe / "dist" / "browser" / "index.html"
-    index.write_text("index")
-    src = fe / "src" / "main.ts"
-    src.write_text("console.log(2)")
-
-    # index older (mtime anterior) que la fuente recién escrita
-    src.write_text("newer")  # refresca el mtime después del index
+    (fe / "dist" / "browser" / "index.html").write_text("index")
+    _stamp(fe, index=1000, sources=2000)  # fuentes (2000) más nuevas que index
     assert _frontend_needs_build(fe) is True
 
 
 def test_frontend_needs_build_false_when_dist_is_fresh(tmp_path):
     fe = _make_frontend(tmp_path)
-    index = fe / "dist" / "browser" / "index.html"
-    index.write_text("index")
-    # tocar el index después de la fuente => dist al día
-    index.write_text("index-edited-after")
+    (fe / "dist" / "browser" / "index.html").write_text("index")
+    _stamp(fe, index=2000, sources=1000)  # index más nuevo que las fuentes
     assert _frontend_needs_build(fe) is False
 
 
