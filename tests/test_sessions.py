@@ -38,6 +38,17 @@ def test_create_dedupes_and_skips_blank(store):
     assert ses["title"] == "qa → prod · 2 parámetros"
 
 
+def test_session_title_updates_when_items_change(store):
+    ses = S.create_session(env_a="dev", env_b="qa", keys=["/a", "/b"])
+    assert ses["title"] == "qa → dev · 2 parámetros"
+
+    S.add_item(ses["id"], "/c")
+    got = S.get_session(ses["id"])
+
+    assert got["title"] == "qa → dev · 3 parámetros"
+    assert S.list_sessions()[0]["title"] == "qa → dev · 3 parámetros"
+
+
 def test_create_validation(store):
     with pytest.raises(ValueError):
         S.create_session(env_a="dev", env_b="dev", keys=["/a"])

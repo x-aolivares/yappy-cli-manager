@@ -1,12 +1,7 @@
 """FastAPI application assembly for the Region Sync web UI.
 
-``Factory-style app``: wiring together the API routers and the frontend.
-
-- If the Angular app is compiled (``frontend/dist/browser`` exists) it is
-  served as a SPA: every unknown path goes to ``index.html`` and the API
-  keeps working.
-- Otherwise it falls back to the legacy vanilla pages under ``static/``,
-  preserving the previous behavior exactly.
+The project uses Angular as the only active web frontend; the legacy vanilla
+JS pages are intentionally not served anymore.
 """
 
 from __future__ import annotations
@@ -15,24 +10,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from .api import db, envs, params, sessions
 
-STATIC_DIR = Path(__file__).resolve().parent / "static"
 FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist" / "browser"
-
-_PAGES = {
-    "/": "index.html",
-    "/db-diff": "db-diff.html",
-    "/params-diff": "params-diff.html",
-    "/params-read": "params-read.html",
-    "/params-create": "params-create.html",
-    "/params-edit": "params-edit.html",
-    "/compile": "compile.html",
-    "/sessions": "sessions.html",
-    "/sessions/{session_id}": "sessions.html",
-}
 
 
 def _serve_spa(app: FastAPI) -> None:
@@ -50,13 +31,18 @@ def _serve_spa(app: FastAPI) -> None:
         return FileResponse(str(index))
 
 
-def _serve_legacy_pages(app: FastAPI) -> None:
-    """Legacy vanilla pages + static assets (pre-Angular behavior)."""
-    for _route, _fname in _PAGES.items():
-        app.get(_route, response_class=FileResponse, include_in_schema=False)(
-            lambda f=_fname: FileResponse(str(STATIC_DIR / f))
+def _serve_unavailable(app: FastAPI) -> None:
+    """Fallback for environments without an Angular build."""
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def not_ready(full_path: str = ""):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(
+            status_code=503,
+            detail="The Angular frontend build is not available. Run `yappy web --build` or `npm run build` in frontend/.",
         )
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 def _create_app() -> FastAPI:
@@ -72,7 +58,7 @@ def _create_app() -> FastAPI:
     if FRONTEND_DIST.is_dir():
         _serve_spa(app)
     else:
-        _serve_legacy_pages(app)
+        _serve_unavailable(app)
     return app
 
 

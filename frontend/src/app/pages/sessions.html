@@ -1,0 +1,105 @@
+<app-page-header
+  title="Sesiones de parámetros"
+  description="Una sesión es una lista de parámetros que vas a sincronizar entre una región de origen y una de destino. La creás desde Leer Parámetros pegando tu lista (o desde tu hoja de cálculo), y después vas iterando ítem por ítem: cada uno se abre en Parámetros para ver el diff y ejecutar el cambio. Acá queda guardado el progreso de todo — sin tocar AWS."
+></app-page-header>
+
+<div class="panel session-toolbar sessions-toolbar">
+  <div class="session-filter-field">
+    <label for="session-search">Filtrar por nombre</label>
+    <input
+      id="session-search"
+      type="text"
+      [value]="filterText()"
+      (input)="filterText.set($any($event.target).value)"
+      placeholder="release/REP-000000 o /prod/api/..."
+    />
+  </div>
+
+  <div class="session-add-field sessions-create-field">
+    <label>Crear nueva sesión</label>
+    <div class="session-add-row">
+      <a class="primary" routerLink="/params-read" [queryParams]="{ from_session: 1 }">Crear nueva sesión</a>
+    </div>
+  </div>
+</div>
+
+@if (error()) {
+  <div class="error-box">{{ error() }}</div>
+}
+
+@if (busy() && !sessions()) {
+  <div class="panel"><span class="spinner"></span>Cargando sesiones…</div>
+}
+
+@if (filteredSessions().length) {
+  <div class="panel session-list-panel">
+    <table class="sessions-table">
+      <thead>
+        <tr>
+          <th>Sesión</th>
+          <th>Flujo</th>
+          <th>Parámetros</th>
+          <th>Estado</th>
+          <th>Creada</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of filteredSessions(); track s.id) {
+          <tr>
+            <td>
+              <div class="session-table-title">{{ s.title }}</div>
+              <div class="muted session-table-id">{{ s.id }}</div>
+            </td>
+            <td>
+              <span class="session-flow-badge">{{ s.env_b }} → {{ s.env_a }}</span>
+            </td>
+            <td>
+              <strong>{{ s.item_count }}</strong>
+            </td>
+            <td>
+              <div class="session-status-stack">
+                <span class="session-status-item">
+                  <app-badge status="ok" label="Aplicado" />
+                  <span class="muted">{{ s.status_counts?.['aplicado'] ?? 0 }}</span>
+                </span>
+                <span class="session-status-item">
+                  <app-badge status="equal" label="Revisado" />
+                  <span class="muted">{{ s.status_counts?.['revisado'] ?? 0 }}</span>
+                </span>
+                <span class="session-status-item">
+                  <app-badge status="none" label="Pendiente" />
+                  <span class="muted">{{ s.status_counts?.['pendiente'] ?? 0 }}</span>
+                </span>
+                @if ((s.status_counts?.['saltado'] ?? 0) > 0) {
+                  <span class="session-status-item">
+                    <app-badge status="missing_in_b" label="Saltado" />
+                    <span class="muted">{{ s.status_counts?.['saltado'] ?? 0 }}</span>
+                  </span>
+                }
+              </div>
+            </td>
+            <td>
+              <span class="muted">{{ fmtDate(s.created_at) }}</span>
+            </td>
+            <td>
+              <div class="session-table-actions">
+                <a class="primary" [routerLink]="['/sessions', s.id]">Continuar</a>
+                <button type="button" class="secondary" (click)="remove(s.id)" [disabled]="deleting()">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+} @else {
+  @if (sessions() !== null) {
+    <app-empty-state-card
+      message="Todavía no hay sesiones."
+      buttonLabel="Crear una nueva sesión"
+      buttonLink="/params-read"
+      [buttonQueryParams]="{ from_session: 1 }"
+    ></app-empty-state-card>
+  }
+}

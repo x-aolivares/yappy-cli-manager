@@ -74,8 +74,8 @@ type PairKey = 'param' | 'secret';
               [checked]="withSecret()"
               (change)="withSecret.set($any($event.target).checked)"
             />
-            Es un secreto
-            <span class="muted" style="font-size:12px;">(parámetro + secreto emparejado en Secrets Manager)</span>
+            Este parámetro almacena un secreto
+            <span class="muted" style="font-size:0.75rem;">(SSM + secreto emparejado en Secrets Manager)</span>
           </label>
         }
         <label class="chk">
@@ -85,7 +85,7 @@ type PairKey = 'param' | 'secret';
             (change)="includeDeletes.set($any($event.target).checked)"
           />
           Incluir eliminaciones
-          <span class="muted" style="font-size:12px;">(por lo general no se eliminan)</span>
+          <span class="muted" style="font-size:0.75rem;">(por lo general no se eliminan)</span>
         </label>
         <button type="button" [disabled]="busy()" (click)="compare()">Comparar</button>
       </div>
@@ -97,7 +97,7 @@ type PairKey = 'param' | 'secret';
 
     @if (data()) {
       <div class="panel">
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
           <app-badge [status]="data()!.status" />
           <span class="muted">{{ data()!.name }}</span>
           <span class="muted">{{ data()!.service }}</span>
@@ -111,19 +111,19 @@ type PairKey = 'param' | 'secret';
       @switch (mode()) {
         @case ('pair') {
           @if (data()!.param_needs_write || data()!.secret_needs_write || withSecret()) {
-            <div class="columns" style="margin-top:14px;">
+            <div class="columns" style="margin-top:0.875rem;">
               <div class="panel">
                 <div class="section-title"><strong>Región de Origen — {{ data()!.env_b }}</strong></div>
-                <div class="muted" style="font-size:12px;">Parámetro</div>
+                <div class="muted" style="font-size:0.75rem;">Parámetro</div>
                 <pre>{{ pre(data()!.value_b ?? '') }}</pre>
-                <div class="muted" style="font-size:12px; margin-top:8px;">Secreto</div>
+                <div class="muted" style="font-size:0.75rem; margin-top:0.5rem;">Secreto</div>
                 <pre>{{ pre(data()!.secret_value_b ?? '') }}</pre>
               </div>
               <div class="panel">
                 <div class="section-title"><strong>Región Destino — {{ data()!.env_a }}</strong></div>
-                <div class="muted" style="font-size:12px;">Parámetro</div>
+                <div class="muted" style="font-size:0.75rem;">Parámetro</div>
                 <pre>{{ pre(data()!.value_a ?? '') }}</pre>
-                <div class="muted" style="font-size:12px; margin-top:8px;">Secreto</div>
+                <div class="muted" style="font-size:0.75rem; margin-top:0.5rem;">Secreto</div>
                 <pre>{{ pre(data()!.secret_value_a ?? '') }}</pre>
               </div>
             </div>
@@ -158,7 +158,7 @@ type PairKey = 'param' | 'secret';
                       </td>
                       <td><code>{{ row.label }}</code></td>
                       <td><app-badge [status]="row.status === 'missing_in_a' ? 'missing_in_a' : 'different'" [label]="row.status === 'missing_in_a' ? 'crear' : 'actualizar'" /></td>
-                      <td><pre style="margin:0; padding:6px 8px; font-size:12px;">{{ row.current }}</pre></td>
+                      <td><pre style="margin:0; padding:0.375rem 0.5rem; font-size:0.75rem;">{{ row.current }}</pre></td>
                       <td>
                         <textarea
                           class="change-input pair-input"
@@ -173,13 +173,13 @@ type PairKey = 'param' | 'secret';
                 </tbody>
               </table>
             </div>
-            <div class="columns" style="align-items:start; margin-top:14px;">
+            <div class="columns" style="align-items:start; margin-top:0.875rem;">
               <div class="panel">
                 <div class="section-title">
                   <strong>Valores resultantes hacia la región destino ({{ data()!.env_a }})</strong>
                 </div>
                 <pre class="script-block">{{ pairPreview() }}</pre>
-                <div class="actions" style="margin-top:10px;">
+                <div class="actions" style="margin-top:0.625rem;">
                   <app-copy-button [text]="pairPreview()" label="Copiar valor" />
                 </div>
               </div>
@@ -188,7 +188,7 @@ type PairKey = 'param' | 'secret';
                   <strong>Comandos de actualización (orden: secreto → parámetro)</strong>
                 </div>
                 <pre class="script-block">{{ scriptText() }}</pre>
-                <div class="actions" style="margin-top:10px;">
+                <div class="actions" style="margin-top:0.625rem;">
                   <app-copy-button [text]="scriptText()" label="Copiar comando" />
                   <button type="button" (click)="execPair()" [disabled]="busy()">
                     Ejecutar en {{ data()!.env_a }}
@@ -237,7 +237,7 @@ type PairKey = 'param' | 'secret';
                         [label]="row.op"
                       />
                     </td>
-                    <td><pre style="margin:0; padding:6px 8px; font-size:12px;">{{ fmtValue(row.old) }}</pre></td>
+                    <td><pre style="margin:0; padding:0.375rem 0.5rem; font-size:0.75rem;">{{ fmtValue(row.old) }}</pre></td>
                     <td>
                       @if (row.op === 'del') {
                         <span class="muted">Se elimina la clave</span>
@@ -256,13 +256,13 @@ type PairKey = 'param' | 'secret';
               </tbody>
             </table>
           </div>
-          <div class="columns" style="align-items:start; margin-top:14px;">
+          <div class="columns" style="align-items:start; margin-top:0.875rem;">
             <div class="panel">
               <div class="section-title">
                 <strong>Valor resultante hacia la region destino ({{ data()!.env_a }})</strong>
               </div>
               <pre class="script-block">{{ previewText() }}</pre>
-              <div class="actions" style="margin-top:10px;">
+              <div class="actions" style="margin-top:0.625rem;">
                 <app-copy-button [text]="previewText()" label="Copiar valor" />
               </div>
             </div>
@@ -271,7 +271,7 @@ type PairKey = 'param' | 'secret';
                 <strong>Comando de actualización para la región destino ({{ data()!.env_a }})</strong>
               </div>
               <pre class="script-block">{{ scriptText() }}</pre>
-              <div class="actions" style="margin-top:10px;">
+              <div class="actions" style="margin-top:0.625rem;">
                 <app-copy-button [text]="scriptText()" label="Copiar comando" />
                 <button type="button" (click)="execUpdate(serialized())" [disabled]="busy()">
                   Ejecutar en {{ data()!.env_a }}
@@ -299,11 +299,11 @@ type PairKey = 'param' | 'secret';
               (input)="setRowText(0, $any($event.target).value)"
             ></textarea>
           </div>
-          <div class="columns" style="align-items:start; margin-top:14px;">
+          <div class="columns" style="align-items:start; margin-top:0.875rem;">
             <div class="panel">
               <div class="section-title"><strong>Valor resultante hacia la region destino</strong></div>
               <pre class="script-block">{{ previewText() }}</pre>
-              <div class="actions" style="margin-top:10px;">
+              <div class="actions" style="margin-top:0.625rem;">
                 <app-copy-button [text]="previewText()" label="Copiar valor" />
               </div>
             </div>
@@ -312,7 +312,7 @@ type PairKey = 'param' | 'secret';
                 <strong>Comando de actualización para la región destino ({{ data()!.env_a }})</strong>
               </div>
               <pre class="script-block">{{ scriptText() }}</pre>
-              <div class="actions" style="margin-top:10px;">
+              <div class="actions" style="margin-top:0.625rem;">
                 <app-copy-button [text]="scriptText()" label="Copiar comando" />
                 <button type="button" (click)="execUpdate(serialized())" [disabled]="busy()">
                   Ejecutar en {{ data()!.env_a }}
@@ -327,13 +327,13 @@ type PairKey = 'param' | 'secret';
           </div>
         }
         @case ('script') {
-          <div class="columns" style="align-items:start; margin-top:14px;">
+          <div class="columns" style="align-items:start; margin-top:0.875rem;">
             <div class="panel script-block">
               <div class="section-title">
                 <strong>Comando de actualización para la región destino ({{ data()!.env_a }})</strong>
               </div>
               <pre>{{ preScript() }}</pre>
-              <div class="actions" style="margin-top:10px;">
+              <div class="actions" style="margin-top:0.625rem;">
                 <app-copy-button [text]="preScript()" label="Copiar script" />
                 <button type="button" (click)="execUpdate(data()!.value_b ?? '')" [disabled]="busy()">
                   Ejecutar en {{ data()!.env_a }}
@@ -352,25 +352,18 @@ type PairKey = 'param' | 'secret';
           </div>
         }
         @case ('create') {
-          <div class="columns" style="align-items:start; margin-top:14px;">
-            <div class="panel">
-              <div class="section-title">
-                <strong>Data para crear</strong>
-                <span class="muted" style="font-size:12px;">{{ createDesc() }}</span>
+          <div class="columns" style="align-items:start; margin-top:0.875rem;">
+            <div class="panel script-block">
+              <div class="section-title"><strong>Data para crear — {{ createRegion() }}</strong></div>
+              <pre class="script-block">{{ createValue() }}</pre>
+              <div class="actions" style="margin-top:0.625rem;">
+                <app-copy-button [text]="createValue()" label="Copiar comando" />
               </div>
-              <textarea
-                id="create-value"
-                class="change-input"
-                rows="6"
-                spellcheck="false"
-                [value]="createValue()"
-                (input)="createValue.set($any($event.target).value); scheduleCreateScript()"
-              ></textarea>
             </div>
             <div class="panel script-block">
               <div class="section-title"><strong>Comando de creación — {{ createRegion() }}</strong></div>
               <pre class="script-block">{{ scriptText() }}</pre>
-              <div class="actions" style="margin-top:10px;">
+              <div class="actions" style="margin-top:0.625rem;">
                 <app-copy-button [text]="scriptText()" label="Copiar comando" />
                 <button type="button" (click)="execCreate()" [disabled]="busy()">
                   Crear en {{ createRegion() }}
@@ -405,7 +398,7 @@ export class ParamsDiffPage {
   readonly environments = signal<EnvironmentInfo[] | null>(null);
   readonly envA = signal('');
   readonly envB = signal('');
-  readonly service = signal<string>('ssm');
+  readonly service = signal<string>('');
   readonly name = signal('');
   readonly withSecret = signal(false);
   readonly includeDeletes = signal(false);
@@ -879,7 +872,7 @@ export class ParamsDiffPage {
     if (
       !confirm(
         `¿Sincronizar ${d.name} en ${d.env_a}?\n${stepsMsg}\n\n` +
-          'Se ejecutan en ese orden: nunca en una sola operación.',
+        'Se ejecutan en ese orden: nunca en una sola operación.',
       )
     ) {
       return;

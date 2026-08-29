@@ -6,13 +6,11 @@ import { EnvironmentInfo } from '../api-gen/models';
   template: `
     <select
       [disabled]="!environments()"
-      [value]="value()"
+      [value]="value() || ''"
       (change)="value.set($any($event.target).value)">
-      @if (!value()) {
-        <option value="" disabled>Seleccioná el ambiente…</option>
-      }
+      <option value="" disabled [selected]="!value()">Seleccione una región</option>
       @for (e of environments() ?? []; track e.env) {
-        <option [value]="e.env">
+        <option [value]="e.env" [selected]="value() === e.env">
           {{ e.env }} — {{ e.region || '' }} ({{ e.profile || '' }})
           @if (e.load_error) {
             (error: {{ e.load_error }})

@@ -60,15 +60,23 @@ html {
 // Design tokens de marca (paleta oficial Yappy Comercial)
 // ============================================================
 :root {
+  /* Escala tipográfica común para toda la app */
+  --text-xxs: 0.7rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.82rem;
+  --text-md: 0.9rem;
+  --text-base: 1rem;
+  --text-lg: 1.15rem;
+
   /* Azules de marca */
-  --yappy-bl: #0050b3; /* azul corporativo: texto y logotipo */
-  --yappy-bldark: #003a80; /* hover del azul corporativo */
-  --yappy-cyan: #00a3e0; /* celeste: burbuja izquierda */
-  --yappy-cyan2: #7fc7e8; /* celeste claro (tint) */
+  --yappy-bl: #2f6df6; /* azul corporativo más vivo para CTAs */
+  --yappy-bldark: #1f53c4; /* hover del azul corporativo */
+  --yappy-cyan: #5ab4ff; /* celeste: burbuja izquierda */
+  --yappy-cyan2: #c6e8ff; /* celeste claro (tint) */
 
   /* Naranjas de marca */
-  --yappy-org: #ff8200; /* naranja: burbuja derecha */
-  --yappy-org2: #d96d00; /* hover del naranja */
+  --yappy-org: #ff9f43; /* naranja: burbuja derecha */
+  --yappy-org2: #ea7a17; /* hover del naranja */
 
   /* Fondos estándar */
   --yappy-white: #ffffff; /* fondo claro estándar */
@@ -131,97 +139,123 @@ a {
   }
 }
 
+.primary,
+a.primary,
+button.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--yappy-bl) 0%, #4b8dff 100%);
+  border: 0.0625rem solid rgba(122, 177, 255, 0.55);
+  color: #ffffff;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.8rem;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  box-shadow: 0 0.375rem 0.875rem rgba(47, 109, 246, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.2s ease;
+
+  &:hover {
+    text-decoration: none;
+    transform: translateY(-0.0625rem);
+    box-shadow: 0 0.5rem 1.125rem rgba(47, 109, 246, 0.28);
+    filter: brightness(1.04);
+  }
+}
+
 h1 {
-  font-size: 20px;
-  margin-bottom: 4px;
+  font-size: 1.25rem;
+  margin-bottom: 0.25rem;
 }
 
 h2 {
-  font-size: 16px;
-  margin-bottom: 12px;
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .muted {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .panel {
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 20px;
-  margin-top: 18px;
+  border: 0.0625rem solid var(--border);
+  border-radius: 0.625rem;
+  padding: 1.25rem;
+  margin-top: 1.125rem;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 14px;
-  margin-bottom: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(13.125rem, 1fr));
+  gap: 0.875rem;
+  margin-bottom: 1.125rem;
 }
 
 .actions {
   display: flex;
-  gap: 10px;
+  gap: 0.625rem;
   align-items: center;
 }
 
 .checkbox-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
   color: var(--text);
   margin-bottom: 0;
 }
 
 .env-checks {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 8px;
-  margin-top: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(14.375rem, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.375rem;
 }
 
 .env-check {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 0.5rem;
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
+  border: 0.0625rem solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
   margin: 0;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin: 18px 0 8px;
+  gap: 0.625rem;
+  margin: 1.125rem 0 0.5rem;
 }
 
 .radio-row {
   display: flex;
-  gap: 18px;
-  padding-top: 8px;
+  gap: 1.125rem;
+  padding-top: 0.5rem;
 
   label {
     color: var(--text);
-    font-size: 14px;
+    font-size: 0.875rem;
     margin-bottom: 0;
   }
 }
 
 label.chk {
   display: inline-flex;
-  gap: 8px;
+  gap: 0.5rem;
   align-items: center;
   color: var(--text);
-  font-size: 13px;
+  font-size: 0.8125rem;
   cursor: pointer;
   margin-bottom: 0;
 }
@@ -229,23 +263,23 @@ label.chk {
 .columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 0.875rem;
 
-  @media (max-width: 760px) {
+  @media (max-width: 47.5rem) {
     grid-template-columns: 1fr;
   }
 }
 
 .script-block {
-  border: 1px solid var(--accent);
+  border: 0.0625rem solid var(--accent);
 }
 
 pre {
   background: var(--code-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px;
-  font-size: 12px;
+  border: 0.0625rem solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.875rem;
+  font-size: 0.75rem;
   line-height: 1.5;
   overflow-x: auto;
   white-space: pre-wrap;
@@ -259,31 +293,31 @@ pre {
 }
 
 .error-box {
-  border: 1px solid var(--err);
+  border: 0.0625rem solid var(--err);
   color: var(--err);
   background: rgba(248, 81, 73, 0.08);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-top: 14px;
-  font-size: 13px;
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  margin-top: 0.875rem;
+  font-size: 0.8125rem;
   white-space: pre-wrap;
 }
 
 .ok-box {
-  border: 1px solid var(--ok);
+  border: 0.0625rem solid var(--ok);
   color: var(--ok);
   background: rgba(101, 188, 123, 0.08);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-top: 14px;
-  font-size: 13px;
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  margin-top: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .card {
   background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 22px;
+  border: 0.0625rem solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1.375rem;
   display: block;
   color: var(--text);
 
@@ -298,8 +332,8 @@ pre {
 
   p {
     color: var(--muted);
-    font-size: 13px;
-    margin-top: 6px;
+    font-size: 0.8125rem;
+    margin-top: 0.375rem;
     line-height: 1.5;
   }
 }
@@ -307,18 +341,18 @@ pre {
 .cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-top: 22px;
+  gap: 1.125rem;
+  margin-top: 1.375rem;
 
-  @media (max-width: 760px) {
+  @media (max-width: 47.5rem) {
     grid-template-columns: 1fr;
   }
 }
 
 .note {
   color: var(--muted);
-  font-size: 12px;
-  margin-top: 6px;
+  font-size: 0.75rem;
+  margin-top: 0.375rem;
 
   &.ok {
     color: var(--ok);
@@ -332,8 +366,8 @@ pre {
 .empty-result {
   color: var(--muted);
   text-align: center;
-  padding: 30px;
-  font-size: 14px;
+  padding: 1.875rem;
+  font-size: 0.875rem;
 }
 
 // ============================================================
@@ -341,9 +375,9 @@ pre {
 // ============================================================
 label {
   display: block;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
-  margin-bottom: 5px;
+  margin-bottom: 0.3125rem;
 }
 
 select,
@@ -353,37 +387,37 @@ textarea {
   width: 100%;
   background: var(--code-bg);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 14px;
+  border: 0.0625rem solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.875rem;
 }
 
 textarea {
   font-family: 'Cascadia Code', Consolas, monospace;
-  font-size: 13px;
-  min-height: 220px;
+  font-size: 0.8125rem;
+  min-height: 13.75rem;
   resize: vertical;
   line-height: 1.5;
 }
 
 .change-input {
   width: 100%;
-  min-height: 34px;
-  max-height: 220px;
+  min-height: 2.125rem;
+  max-height: 13.75rem;
   font-family: 'Cascadia Code', Consolas, monospace;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.4;
   white-space: pre;
   overflow: auto;
-  padding: 6px 8px;
+  padding: 0.375rem 0.5rem;
   resize: vertical;
 }
 
 select:focus,
 input:focus,
 textarea:focus {
-  outline: 1px solid var(--accent);
+  outline: 0.0625rem solid var(--accent);
 }
 
 .checkbox-row {
@@ -404,9 +438,10 @@ button {
   color: #fff;
   font-weight: 700;
   border: none;
-  border-radius: 6px;
-  padding: 9px 18px;
-  font-size: 14px;
+  border-radius: 0.5rem;
+  padding: 0.52rem 0.82rem;
+  font-size: var(--text-sm);
+  line-height: 1.2;
   cursor: pointer;
 
   &:hover {
@@ -416,7 +451,8 @@ button {
   &.secondary {
     background: var(--panel);
     color: var(--text);
-    border: 1px solid var(--border);
+    border: 0.0625rem solid var(--border);
+    box-shadow: none;
   }
 
   &:disabled {
@@ -430,11 +466,11 @@ button {
 // ============================================================
 .badge {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 12px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 62.4375rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  border: 1px solid;
+  border: 0.0625rem solid;
 
   &.equal,
   &.none {
@@ -471,27 +507,29 @@ button {
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 8px;
-  font-size: 13px;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
 }
 
 th,
 td {
   text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
+  padding: 0.625rem 0.75rem;
+  border-bottom: 0.0625rem solid var(--border);
   vertical-align: top;
+  font-size: 0.9rem;
 }
 
 th {
   color: var(--muted);
   font-weight: 600;
-  font-size: 12px;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
 }
 
 td .diff-link {
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 0.88rem;
   font-weight: 600;
 }
 
@@ -500,13 +538,13 @@ td .diff-link {
 // ============================================================
 .spinner {
   display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 0.125rem solid rgba(255, 255, 255, 0.3);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  margin-right: 8px;
+  margin-right: 0.5rem;
   vertical-align: middle;
 }
 
@@ -518,25 +556,253 @@ td .diff-link {
 
 .progress-track {
   flex: 1;
-  min-width: 140px;
+  min-width: 8.75rem;
   background: var(--panel);
-  border-radius: 6px;
-  height: 10px;
+  border-radius: 62.4375rem;
+  height: 0.625rem;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 0.0625rem solid var(--border);
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--ok);
+  background: linear-gradient(90deg, var(--yappy-bl), var(--yappy-org));
+}
+
+.sessions-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.25rem;
+  align-items: end;
+}
+
+.sessions-create-field {
+  border-left: 0.0625rem solid var(--border);
+  padding-left: 1.25rem;
+  min-width: 15rem;
+}
+
+.sessions-create-field .session-add-row {
+  justify-content: flex-end;
+}
+
+.sessions-create-field .primary {
+  width: auto;
+}
+
+.session-list-panel {
+  overflow-x: auto;
+}
+
+.sessions-table {
+  width: 100%;
+  min-width: 52rem;
+  border-collapse: collapse;
+}
+
+.sessions-table th,
+.sessions-table td {
+  vertical-align: top;
+  padding: 0.875rem 0.75rem;
+}
+
+.sessions-table thead th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 0.0625rem solid var(--border);
+}
+
+.sessions-table tbody tr {
+  border-bottom: 0.0625rem solid var(--border);
+}
+
+.sessions-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.session-table-title {
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.session-table-id {
+  font-size: 0.72rem;
+  margin-top: 0.2rem;
+  word-break: break-word;
+}
+
+.session-flow-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(47, 109, 246, 0.12);
+  border: 0.0625rem solid rgba(47, 109, 246, 0.35);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.session-status-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.65rem;
+  align-items: center;
+}
+
+.session-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.session-table-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.session-shell {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.session-back-link {
+  display: inline-block;
+  font-size: var(--text-sm);
+  margin-top: 0.25rem;
+}
+
+.session-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 1.6vw, 1.8rem);
+  line-height: 1.25;
+}
+
+.session-meta {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.session-progress-panel,
+.session-toolbar,
+.session-filter-panel,
+.session-add-panel,
+.session-table-panel {
+  margin-top: 0;
+}
+
+.session-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.session-progress-label,
+.session-progress-percent {
+  font-size: var(--text-sm);
+}
+
+.session-next-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  margin-top: 0.125rem;
+}
+
+.session-next-action {
+  font-size: var(--text-sm);
+}
+
+.session-next-count {
+  font-size: var(--text-sm);
+}
+
+.session-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.session-filter-panel {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.session-add-field {
+  border-left: 0.0625rem solid var(--border);
+  padding-left: 1.25rem;
+}
+
+.session-add-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.session-add-row input {
+  flex: 1;
+}
+
+@media (max-width: 40rem) {
+  .session-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .session-add-field {
+    border-left: none;
+    padding-left: 0;
+    border-top: 0.0625rem solid var(--border);
+    padding-top: 1rem;
+  }
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.session-action-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.session-actions > a,
+.session-actions > button {
+  font-size: var(--text-xs);
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.4375rem;
+  min-height: 2rem;
+}
+
+.session-actions > a.primary,
+.session-actions > a.primary:hover {
+  text-decoration: none;
+}
+
+.session-details-pre {
+  margin-top: 0.5rem;
 }
 
 .stmt-row {
   display: flex;
-  gap: 10px;
+  gap: 0.625rem;
   align-items: flex-start;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  padding: 0.625rem 0;
+  border-bottom: 0.0625rem solid var(--border);
 
   &:last-child {
     border-bottom: none;
@@ -545,18 +811,18 @@ td .diff-link {
 
 .stmt-preview {
   margin: 0;
-  padding: 8px 10px;
-  font-size: 12px;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.75rem;
   background: var(--code-bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 0.0625rem solid var(--border);
+  border-radius: 0.375rem;
   overflow-x: auto;
 }
 
 .stmt-meta {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 0.625rem;
   flex-wrap: wrap;
 }
 
@@ -564,11 +830,11 @@ td .diff-link {
 // Detalles colapsables (guardado de sesión)
 // ============================================================
 details {
-  margin-top: 6px;
+  margin-top: 0.375rem;
 
   summary {
     &.muted {
-      font-size: 12px;
+      font-size: 0.75rem;
       cursor: pointer;
     }
   }

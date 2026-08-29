@@ -74,7 +74,7 @@ import { RegionControlsComponent } from '../shared/region-controls';
               Stored procedure
             </label>
           </div>
-          <div style="margin-top:12px;">
+          <div style="margin-top:0.75rem;">
             <label class="chk">
               <input
                 type="checkbox"
@@ -83,7 +83,7 @@ import { RegionControlsComponent } from '../shared/region-controls';
               />
               Incluir eliminaciones
             </label>
-            <p class="muted" style="margin-top:4px; font-size:12px;">
+            <p class="muted" style="margin-top:0.25rem; font-size:0.75rem;">
               Por lo general no se eliminan, pero podés activar el DROP para objetos que solo existen
               en la región destino.
             </p>
@@ -105,7 +105,7 @@ import { RegionControlsComponent } from '../shared/region-controls';
 
     @if (result()) {
       <div class="panel">
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
           <app-badge [status]="result()!.status" />
           <span class="muted">
             {{ result()!.object_type }} {{ result()!.schema_name }}.{{ result()!.object_name }}
@@ -128,7 +128,7 @@ import { RegionControlsComponent } from '../shared/region-controls';
               <strong>Script de eliminación (ejecutar en la región destino: {{ result()!.env_a }})</strong>
             </div>
             <pre class="script-block">{{ result()!.script }}</pre>
-            <div class="actions" style="margin-top:10px;">
+            <div class="actions" style="margin-top:0.625rem;">
               <app-copy-button [text]="result()!.script ?? ''" />
             </div>
           </div>
@@ -152,7 +152,7 @@ import { RegionControlsComponent } from '../shared/region-controls';
           </div>
           @if (result()!.script) {
             <pre class="script-block">{{ result()!.script }}</pre>
-            <div class="actions" style="margin-top:10px;">
+            <div class="actions" style="margin-top:0.625rem;">
               <app-copy-button [text]="result()!.script ?? ''" />
             </div>
           } @else {

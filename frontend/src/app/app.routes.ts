@@ -12,13 +12,13 @@ import { SessionsPage } from './pages/sessions';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: HomePage },
-  { path: 'db-diff', component: DbDiffPage },
-  { path: 'params-diff', component: ParamsDiffPage },
   { path: 'params-read', component: ParamsReadPage },
-  { path: 'params-create', component: ParamsCreatePage },
-  { path: 'params-edit', component: ParamsEditPage },
-  { path: 'compile', component: CompilePage },
   { path: 'sessions', component: SessionsPage },
   { path: 'sessions/:sessionId', component: SessionDetailPage },
+  { path: 'params-create', component: ParamsCreatePage },
+  { path: 'params-diff', component: ParamsDiffPage },
+  { path: 'params-edit', component: ParamsEditPage },
+  { path: 'db-diff', component: DbDiffPage },
+  { path: 'compile', component: CompilePage },
   { path: '**', redirectTo: '' },
 ];

@@ -20,8 +20,9 @@ import { EnvSelectComponent } from './env-select';
           <label for="service">Servicio</label>
           <select
             id="service"
-            [value]="service()"
+            [value]="service() || ''"
             (change)="service.set($any($event.target).value)">
+            <option value="" disabled [selected]="!service()">Seleccione un servicio</option>
             <option value="ssm">SSM Parameter Store</option>
             <option value="secretsmanager">Secrets Manager</option>
           </select>
@@ -50,6 +51,6 @@ export class RegionControlsComponent {
 
   envB = model('');
   envA = model('');
-  service = model<string>('ssm');
+  service = model<string>('');
   nameValue = model('');
 }

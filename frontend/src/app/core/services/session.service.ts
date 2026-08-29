@@ -1,4 +1,6 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { Api } from '../../api-gen/api';
 import {
   createSession,
@@ -19,6 +21,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class SessionService {
   private readonly api = inject(Api);
+  private readonly http = inject(HttpClient);
 
   create(request: CreateSessionRequest): Promise<SessionDetailResponse> {
     return this.api.invoke(createSession, { body: request });
@@ -41,5 +44,17 @@ export class SessionService {
     request: UpdateSessionItemRequest,
   ): Promise<SessionItemInfo> {
     return this.api.invoke(updateSessionItem, { session_id: sessionId, body: request });
+  }
+
+  createItem(sessionId: string, request: UpdateSessionItemRequest): Promise<SessionItemInfo> {
+    return firstValueFrom(
+      this.http.post<SessionItemInfo>(`/api/sessions/${encodeURIComponent(sessionId)}/items/create`, request),
+    );
+  }
+
+  reportMarkdown(sessionId: string): Promise<string> {
+    return firstValueFrom(
+      this.http.get(`/api/sessions/${encodeURIComponent(sessionId)}/report.md`, { responseType: 'text' }),
+    );
   }
 }

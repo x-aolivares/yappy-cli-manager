@@ -4,6 +4,7 @@ import { SessionDetailResponse, SessionItemInfo } from '../api-gen/models';
 import { SessionService } from '../core/services/session.service';
 import { toApiError } from '../core/services/api-error';
 import { fmtDate } from '../core/format';
+import { PageHeaderComponent } from '../shared/page-header';
 import { StatusBadge } from '../shared/status-badge';
 
 const STATUS_META: Record<string, [string, string]> = {
@@ -15,97 +16,8 @@ const STATUS_META: Record<string, [string, string]> = {
 
 @Component({
   selector: 'app-session-detail-page',
-  imports: [RouterLink, StatusBadge],
-  template: `
-    @if (error()) {
-      <div class="error-box">{{ error() }}</div>
-    }
-    @if (busy() && !session()) {
-      <div class="panel"><span class="spinner"></span>Cargando sesión…</div>
-    }
-
-    @if (session(); as session) {
-      <a routerLink="/sessions" class="muted" style="text-decoration:none;">← Sesiones</a>
-      <h1>{{ session.title }}</h1>
-      <p class="muted">
-        {{ session.env_b }} (origen) → {{ session.env_a }} (destino) ·
-        creada {{ fmtDate(session.created_at) }} · {{ session.items.length }} parámetros
-      </p>
-      <div class="panel">
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <div class="muted">{{ doneCount(session) }} de {{ session.items.length }} cerrados</div>
-          <div class="progress-track">
-            <div class="progress-fill" [style.width.%]="donePct(session)"></div>
-          </div>
-          <div class="muted">{{ donePct(session) }}%</div>
-        </div>
-      </div>
-      @if (nextItem(session); as next) {
-        <p style="margin-top:12px;">
-          <a class="primary" style="text-decoration:none;" [routerLink]="['/params-diff']" [queryParams]="diffQuery(next, session)">
-            Siguiente pendiente →
-          </a>
-          <span class="muted">({{ pendingCount(session) }} en cola)</span>
-        </p>
-      }
-      <div style="margin-top:12px;" class="panel">
-        <table>
-          <thead>
-            <tr><th>#</th><th>Nombre</th><th>Servicio</th><th>Estado</th><th>Acciones</th></tr>
-          </thead>
-          <tbody>
-            @for (item of session.items; track item.name) {
-              <tr>
-                <td class="muted">{{ item.position + 1 }}</td>
-                <td><code>{{ item.name }}</code></td>
-                <td>
-                  @if (item.service === 'secretsmanager' || item.is_secret) {
-                    <app-badge status="secret" label="Secreto" />
-                  } @else {
-                    <span class="muted">SSM</span>
-                  }
-                </td>
-                <td>
-                  @if (statusMeta(item.status); as meta) {
-                    <app-badge [status]="meta[0]" [label]="meta[1]" />
-                  }
-                </td>
-                <td>
-                  <a
-                    class="primary"
-                    style="text-decoration:none; display:inline-block;"
-                    [routerLink]="['/params-diff']"
-                    [queryParams]="diffQuery(item, session)"
-                  >Abrir en Parámetros →</a>
-                  @if (item.status !== 'aplicado') {
-                    <button type="button" class="secondary" [disabled]="actBusy()" (click)="setStatus(item.name, 'aplicado')">
-                      Marcar aplicado
-                    </button>
-                  }
-                  @if (item.status === 'pendiente') {
-                    <button type="button" class="secondary" [disabled]="actBusy()" (click)="setStatus(item.name, 'saltado')">
-                      Saltar
-                    </button>
-                  }
-                  @if (item.status === 'saltado' || item.status === 'aplicado') {
-                    <button type="button" class="secondary" [disabled]="actBusy()" (click)="setStatus(item.name, 'pendiente')">
-                      Reabrir
-                    </button>
-                  }
-                  @if (itemDetailsText(item); as text) {
-                    <details style="margin-top:6px;">
-                      <summary class="muted" style="font-size:12px; cursor:pointer;">Ver guardado</summary>
-                      <pre class="script-block" style="margin-top:6px; overflow:auto;">{{ text }}</pre>
-                    </details>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-  `,
+  imports: [RouterLink, StatusBadge, PageHeaderComponent],
+  templateUrl: './session-detail.html',
 })
 export class SessionDetailPage {
   private readonly sessionService = inject(SessionService);
@@ -116,6 +28,8 @@ export class SessionDetailPage {
   readonly busy = signal(false);
   readonly actBusy = signal(false);
   readonly error = signal<string | null>(null);
+  readonly filterText = signal('');
+  readonly newItemName = signal('');
 
   constructor() {
     effect(() => {
@@ -170,6 +84,35 @@ export class SessionDetailPage {
     return session.items.filter((i) => i.status === 'pendiente').length;
   }
 
+  filteredItems(): SessionItemInfo[] {
+    const session = this.session();
+    if (!session) return [];
+    const q = this.filterText().trim().toLowerCase();
+    if (!q) return session.items;
+    return session.items.filter((item) => item.name.toLowerCase().includes(q));
+  }
+
+  addItem() {
+    const id = this.sessionId();
+    const name = this.newItemName().trim();
+    if (!id || !name) return;
+    this.actBusy.set(true);
+    this.error.set(null);
+    this.sessionService
+      .createItem(id, { name, status: 'pendiente', service: this.session()?.service || 'ssm' })
+      .then(
+        () => {
+          this.actBusy.set(false);
+          this.newItemName.set('');
+          void this.load(id);
+        },
+        (err) => {
+          this.actBusy.set(false);
+          this.error.set(toApiError(err).message);
+        },
+      );
+  }
+
   nextItem(session: SessionDetailResponse): SessionItemInfo | null {
     return session.items.find((i) => i.status === 'pendiente') ?? null;
   }
@@ -196,6 +139,11 @@ export class SessionDetailPage {
     if (item.script) parts.push(`Comando:\n${item.script}`);
     if (item.preview) parts.push(`Valor a aplicar:\n${item.preview}`);
     return parts.join('\n\n');
+  }
+
+  reportUrl(): string {
+    const id = this.sessionId();
+    return id ? `/api/sessions/${encodeURIComponent(id)}/report.md` : '#';
   }
 
   protected readonly fmtDate = fmtDate;

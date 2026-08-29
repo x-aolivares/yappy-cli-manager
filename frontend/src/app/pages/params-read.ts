@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { EnvironmentInfo, ParamsReadResponse, ReadEntryResultInfo } from '../api-gen/models';
 import { EnvironmentService } from '../core/services/environment.service';
 import { ParamsService } from '../core/services/params.service';
@@ -30,6 +30,16 @@ import { StatusBadge } from '../shared/status-badge';
         [(envA)]="envA"
         [(service)]="service"
       />
+      @if (requireAlias()) {
+        <label for="session-alias">Alias o nombre de la iniciativa</label>
+        <input
+          id="session-alias"
+          type="text"
+          [value]="sessionAlias()"
+          (input)="sessionAlias.set($any($event.target).value)"
+          placeholder="release/REP-325073"
+        />
+      }
       <label for="entries">Lista de parámetros</label>
       <textarea
         id="entries"
@@ -38,7 +48,7 @@ import { StatusBadge } from '../shared/status-badge';
         (input)="entries.set($any($event.target).value)"
         placeholder="/prod/ecommerce/db/master_url&#10;/prod/payment/stripe/secret_key"
       ></textarea>
-      <div class="actions" style="justify-content:flex-end; margin-top:10px;">
+      <div class="actions" style="justify-content:flex-end; margin-top:0.625rem;">
         <button type="button" [disabled]="busy()" (click)="read()">Leer valores <span class="muted">(desde Origen)</span></button>
       </div>
     </div>
@@ -116,10 +126,14 @@ export class ParamsReadPage {
   private readonly paramsService = inject(ParamsService);
   private readonly sessionService = inject(SessionService);
 
+  private readonly router = inject(Router);
+
   readonly environments = signal<EnvironmentInfo[] | null>(null);
   readonly envB = signal('');
   readonly envA = signal('');
-  readonly service = signal<string>('ssm');
+  readonly service = signal<string>('');
+  readonly sessionAlias = signal('');
+  readonly requireAlias = signal(false);
   readonly entries = signal('');
 
   readonly busy = signal(false);
@@ -128,6 +142,14 @@ export class ParamsReadPage {
   readonly sessionCreated = signal<{ title: string; id: string } | null>(null);
 
   constructor() {
+    const q = new URLSearchParams(location.search);
+    const sessionAlias = q.get('alias') ?? q.get('session_alias') ?? '';
+    const fromSession = q.get('from_session') === '1' || q.get('session_id') !== null || q.get('session') !== null;
+    this.requireAlias.set(fromSession);
+    if (sessionAlias) {
+      this.sessionAlias.set(sessionAlias);
+    }
+
     this.envService.list().then(
       (envs) => this.environments.set(envs.environments),
       (err) => this.error.set('No se pudieron cargar los ambientes: ' + toApiError(err).message),
@@ -217,16 +239,23 @@ export class ParamsReadPage {
       .map((e) => (typeof e === 'string' ? e : (e as { key?: string; name?: string }).key || (e as { name?: string }).name || ''))
       .filter((k) => k !== '');
     if (!keys.length) return;
+    const alias = this.sessionAlias().trim();
+    const payload = {
+      env_a: envA,
+      env_b: envB,
+      service: this.service() || 'ssm',
+      keys,
+      alias,
+      title: alias,
+      reuse: true,
+    };
     this.sessionService
-      .create({
-        env_a: envA,
-        env_b: envB,
-        service: this.service(),
-        keys,
-        reuse: true,
-      })
+      .create(payload)
       .then(
-        (body) => this.sessionCreated.set({ title: body.title, id: body.id }),
+        (body) => {
+          this.sessionCreated.set({ title: body.title, id: body.id });
+          this.router.navigate(['/sessions', body.id]);
+        },
         () => null,
       );
   }

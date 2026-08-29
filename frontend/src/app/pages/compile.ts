@@ -70,7 +70,7 @@ import { StatusBadge } from '../shared/status-badge';
         placeholder="Pegá acá el script, por ejemplo el que genera el DB Diff..."
       ></textarea>
 
-      <label class="checkbox-row" style="margin-top:12px;">
+      <label class="checkbox-row" style="margin-top:0.75rem;">
         <input
           type="checkbox"
           [checked]="confirmChecked()"
@@ -79,7 +79,7 @@ import { StatusBadge } from '../shared/status-badge';
         <span>Sí, quiero ejecutar esto en <strong>{{ confirmEnv() }}</strong></span>
       </label>
 
-      <div class="actions" style="justify-content:flex-end; margin-top:10px;">
+      <div class="actions" style="justify-content:flex-end; margin-top:0.625rem;">
         <button type="button" [disabled]="busy()" (click)="run()">Compilar</button>
       </div>
     </div>

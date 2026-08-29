@@ -1,0 +1,101 @@
+@if (error()) {
+<div class="error-box">{{ error() }}</div>
+}
+@if (busy() && !session()) {
+<div class="panel"><span class="spinner"></span>Cargando sesión…</div>
+}
+
+@if (session(); as session) {
+<div class="session-shell">
+  <a routerLink="/sessions" class="muted session-back-link">← Sesiones</a>
+  <app-page-header [title]="session.title"
+    [description]="session.env_b + ' (origen) → ' + session.env_a + ' (destino) · creada ' + fmtDate(session.created_at) + ' · ' + session.items.length + ' parámetros'">
+  </app-page-header>
+
+  <div class="panel session-toolbar">
+    <div class="session-filter-field">
+      <label for="session-filter">Filtrar por nombre</label>
+      <input id="session-filter" type="text" [value]="filterText()" (input)="filterText.set($any($event.target).value)"
+        placeholder="/prod/api/..." />
+    </div>
+
+    <div class="session-add-field">
+      <label for="session-new-name">Agregar parámetro a la sesión</label>
+      <div class="session-add-row">
+        <input id="session-new-name" type="text" [value]="newItemName()"
+          (input)="newItemName.set($any($event.target).value)" placeholder="/prod/new/param" />
+        <button type="button" class="secondary" [disabled]="actBusy()" (click)="addItem()">Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel session-table-panel">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nombre</th>
+          <th>Servicio</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of filteredItems(); track item.name) {
+        <tr>
+          <td class="muted">{{ item.position + 1 }}</td>
+          <td><code>{{ item.name }}</code></td>
+          <td>
+            @if (item.service === 'secretsmanager' || item.is_secret) {
+            <app-badge status="secret" label="Secreto" />
+            } @else {
+            <span class="muted">SSM</span>
+            }
+          </td>
+          <td>
+            @if (statusMeta(item.status); as meta) {
+            <app-badge [status]="meta[0]" [label]="meta[1]" />
+            }
+          </td>
+          <td>
+            <div class="session-actions">
+              <a class="primary" [routerLink]="['/params-diff']" [queryParams]="diffQuery(item, session)">Abrir en Parámetros →</a>
+              <div class="session-action-group">
+                @if (item.status === 'pendiente') {
+                <button type="button" class="secondary" [disabled]="actBusy()"
+                  (click)="setStatus(item.name, 'saltado')">Saltar</button>
+                }
+                @if (item.status !== 'aplicado') {
+                <button type="button" class="secondary" [disabled]="actBusy()"
+                  (click)="setStatus(item.name, 'aplicado')">Marcar aplicado</button>
+                }
+                @if (item.status === 'saltado' || item.status === 'aplicado') {
+                <button type="button" class="secondary" [disabled]="actBusy()"
+                  (click)="setStatus(item.name, 'pendiente')">Reabrir</button>
+                }
+              </div>
+            </div>
+
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="panel session-progress-panel">
+    <div class="session-progress-row">
+      <div class="muted session-progress-label">{{ doneCount(session) }} de {{ session.items.length }} cerrados</div>
+      <div class="progress-track">
+        <div class="progress-fill" [style.width.%]="donePct(session)"></div>
+      </div>
+      <div class="muted session-progress-percent">{{ donePct(session) }}%</div>
+    </div>
+  </div>
+
+  <div class="panel session-toolbar">
+    <div class="muted">Trackeo del cambio de la sesión</div>
+    <a class="primary" [href]="reportUrl()" target="_blank" rel="noreferrer">Descargar reporte .md</a>
+  </div>
+
+</div>
+}

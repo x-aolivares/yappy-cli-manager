@@ -3,6 +3,7 @@ renderRegionControls(document.getElementById("region-controls"));
 const envB = document.getElementById("env-b");
 const envA = document.getElementById("env-a");
 const serviceSel = document.getElementById("service");
+const aliasInput = document.getElementById("session-alias");
 const readBtn = document.getElementById("read-btn");
 const entriesInput = document.getElementById("entries");
 const result = document.getElementById("result");
@@ -107,6 +108,10 @@ function render(data) {
      </div>`;
 }
 
+function sessionAlias() {
+  return (aliasInput && aliasInput.value ? aliasInput.value.trim() : "").trim();
+}
+
 function ensureSession(entries) {
   const envB_ = envB.value;
   const envA_ = envA.value;
@@ -114,16 +119,20 @@ function ensureSession(entries) {
   const keys = entries.map((e) =>
     typeof e === "string" ? e : e.key || e.name || ""
   );
+  const alias = sessionAlias();
+  const requestBody = {
+    env_a: envA_,
+    env_b: envB_,
+    service: serviceSel.value,
+    keys,
+    title: alias,
+    alias,
+    reuse: true,
+  };
   return fetch("/api/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      env_a: envA_,
-      env_b: envB_,
-      service: serviceSel.value,
-      keys,
-      reuse: true,
-    }),
+    body: JSON.stringify(requestBody),
   })
     .then(async (res) => {
       const body = await res.json();
@@ -131,11 +140,13 @@ function ensureSession(entries) {
       return body;
     })
     .then((body) => {
+      const sessionHref = `/sessions/${encodeURIComponent(body.id)}`;
       result.insertAdjacentHTML(
         "afterbegin",
         `<div class="ok-box">Sesión de trabajo <strong>${escapeHtml(body.title)}</strong> lista · ` +
-          `<a href="/sessions/${encodeURIComponent(body.id)}">Abrir en Sesiones →</a></div>`,
+          `<a href="${sessionHref}">Abrir en Sesiones →</a></div>`,
       );
+      window.location.assign(sessionHref);
     });
 }
 
