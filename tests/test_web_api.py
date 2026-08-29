@@ -803,3 +803,91 @@ def test_api_db_diff_missing_in_b_respects_include_deletes(monkeypatch):
     assert payload_no_delete["status"] == "missing_in_b"
     assert payload_no_delete["script"] is None
     assert "no hay nada que sincronizar" in payload_no_delete["notes"][0]
+
+
+def test_api_params_apply_target_b_builds_script_for_origin(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    captured = []
+    monkeypatch.setattr(
+        p, "build_ssm_script",
+        lambda name, value, value_type, cfg: captured.append(
+            (cfg._env, name, value)
+        ) or f"aws ssm put-parameter --name '{name}'",
+    )
+
+    payload = api_params_apply(
+        ApplyParamsRequest(
+            env_a="qa", env_b="dev", service="ssm", name="/x",
+            new_value="20", target="b",
+        )
+    )
+
+    assert payload["script"] == "aws ssm put-parameter --name '/x'"
+    assert captured == [("dev", "/x", "20")]
+
+
+def test_api_params_apply_execute_target_b_forwards_put_to_origin(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    calls = []
+    monkeypatch.setattr(
+        p, "put_parameter",
+        lambda cfg, name, value, value_type: calls.append(cfg._env)
+        or {"ok": True, "message": "ok"},
+    )
+
+    payload = api_params_apply_execute(
+        ExecuteParamsRequest(
+            env_a="qa", env_b="dev", service="ssm", op="update", name="/x",
+            new_value="20", target="b", confirm=True,
+        )
+    )
+
+    assert calls == ["dev"]
+    assert payload["ok"] is True
+
+
+def test_api_params_apply_execute_delete_ignores_target(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    calls = []
+    monkeypatch.setattr(
+        p, "delete_parameter",
+        lambda cfg, name: calls.append(cfg._env) or {"ok": True, "message": "borrado"},
+    )
+
+    api_params_apply_execute(
+        ExecuteParamsRequest(
+            env_a="qa", env_b="dev", service="ssm", op="delete", name="/x",
+            target="b", confirm=True,
+        )
+    )
+
+    assert calls == ["qa"]
+
+
+def test_api_params_apply_execute_invalid_target_rejected(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_params_apply_execute(
+            ExecuteParamsRequest(
+                env_a="qa", env_b="dev", service="ssm", op="update", name="/x",
+                target="c", confirm=True,
+            )
+        )
+    assert exc_info.value.status_code == 400
+    assert "target" in str(exc_info.value.detail)

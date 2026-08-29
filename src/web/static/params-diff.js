@@ -235,16 +235,17 @@ function renderExecResult(message, isError) {
   }
 }
 
-function makeExecuteBtn(op, getValue) {
+function makeExecuteBtn(op, getValue, target = "a", label = null) {
   const btn = document.createElement("button");
   btn.className = "primary";
   const verb = op === "delete" ? "Eliminar" : "Ejecutar";
-  btn.textContent = `${verb} en ${data.env_a}`;
+  const dest = target === "b" ? data.env_b : data.env_a;
+  btn.textContent = label || `${verb} en ${dest}`;
   btn.addEventListener("click", async () => {
     const msg =
       op === "delete"
-        ? `¿Eliminar DEFINITIVAMENTE ${data.name} en ${data.env_a}?\nNo se puede deshacer.`
-        : `¿Ejecutar la actualización de ${data.name} en ${data.env_a}?`;
+        ? `¿Eliminar DEFINITIVAMENTE ${data.name} en ${dest}?\nNo se puede deshacer.`
+        : `¿Ejecutar la actualización de ${data.name} en ${dest}?`;
     if (!confirm(msg)) return;
     renderExecResult("Ejecutando…");
     btn.disabled = true;
@@ -257,6 +258,7 @@ function makeExecuteBtn(op, getValue) {
           env_b: data.env_b,
           service: data.service,
           op,
+          target,
           name: data.name,
           new_value: op === "update" ? getValue() : "",
           value_type: data.value_type_b || "String",
@@ -271,6 +273,105 @@ function makeExecuteBtn(op, getValue) {
           status: "aplicado",
           service: data.service,
           is_secret: !!data.pair,
+          script: scriptText,
+          notes: body.message,
+        });
+      }
+      setTimeout(() => compareBtn.click(), 700);
+    } catch (e) {
+      renderExecResult(e.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  return btn;
+}
+
+/* --- Create-from-scratch (parámetro que no existe en origen y/o destino) --- */
+
+let createTarget = "b";
+
+function refreshCreateScript() {
+  const seq = ++applySeq;
+  const pre = document.getElementById("script-pre");
+  const ta = document.getElementById("create-value");
+  const value = ta ? ta.value : "";
+  fetch("/api/params/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      env_a: data.env_a,
+      env_b: data.env_b,
+      service: data.service,
+      name: data.name,
+      new_value: value,
+      value_type: data.value_type_b || "String",
+      target: createTarget,
+    }),
+  })
+    .then(async (res) => {
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
+      return body;
+    })
+    .then((body) => {
+      if (seq !== applySeq) return;
+      scriptText = body.script || "";
+      if (pre)
+        pre.textContent = scriptText || "Escribí un valor para generar el comando.";
+    })
+    .catch((e) => {
+      if (seq !== applySeq) return;
+      scriptText = "";
+      if (pre) pre.textContent = "No se pudo generar el comando: " + e.message;
+    });
+}
+
+function createOnEdit() {
+  clearTimeout(applyTimer);
+  applyTimer = setTimeout(refreshCreateScript, 350);
+}
+
+function makeCreateExecuteBtn() {
+  const btn = document.createElement("button");
+  btn.className = "primary";
+  const region = createTarget === "a" ? data.env_a : data.env_b;
+  btn.textContent = `Crear en ${region}`;
+  btn.addEventListener("click", async () => {
+    const value = document.getElementById("create-value").value;
+    if (value.trim() === "") {
+      renderExecResult("Escribí un valor para crear el parámetro.", true);
+      return;
+    }
+    const verb = data.status === "missing_in_a" ? "actualizar/crear" : "crear";
+    if (!confirm(`¿${verb} ${data.name} en ${region} con el valor ingresado?`))
+      return;
+    renderExecResult("Creando…");
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/params/apply-execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          env_a: data.env_a,
+          env_b: data.env_b,
+          service: data.service,
+          op: "update",
+          target: createTarget,
+          name: data.name,
+          new_value: value,
+          value_type: data.value_type_b || "String",
+          confirm: true,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
+      renderExecResult(body.message);
+      if (SESSION_ID) {
+        sessionUpdate({
+          status: "aplicado",
+          service: data.service,
+          is_secret: false,
           script: scriptText,
           notes: body.message,
         });
@@ -526,7 +627,7 @@ function render(payload) {
     return;
   }
 
-  if (data.status === "equal" || data.status === "none") {
+  if (data.status === "equal") {
     result.innerHTML = parts.join("");
     return;
   }
@@ -595,7 +696,7 @@ function render(payload) {
     return;
   }
 
-  if (data.script && ["different", "missing_in_a", "missing_in_b"].includes(data.status)) {
+  if (data.script && data.status === "different") {
     const patchSection = data.is_json
       ? `<div class="panel" style="margin-top:14px;">
            <div class="section-title"><strong>Valor a aplicar en la región destino (${escapeHtml(data.env_a)})</strong>
@@ -604,7 +705,7 @@ function render(payload) {
          </div>`
       : "";
     const scriptSection = `<div class="panel script-block" style="margin-top:14px;">
-        <div class="section-title"><strong>${data.status === "missing_in_b" ? "Comando de eliminación" : "Comando de actualización"} para la región destino (${escapeHtml(data.env_a)})</strong></div>
+        <div class="section-title"><strong>Comando de actualización para la región destino (${escapeHtml(data.env_a)})</strong></div>
         ${preBlock(data.script || "No hay comando que ejecutar.", "—")}
         <div class="actions" style="margin-top:10px;"><span id="script-actions"></span><span id="exec-actions"></span></div>
         <div id="exec-result"></div>
@@ -627,9 +728,58 @@ function render(payload) {
       });
       const ewrap = document.getElementById("exec-actions");
       if (ewrap) {
-        const op = data.status === "missing_in_b" ? "delete" : "update";
-        const getValue = () => data.value_b ?? "";
-        ewrap.appendChild(makeExecuteBtn(op, getValue));
+        ewrap.appendChild(makeExecuteBtn("update", () => data.value_b ?? ""));
+      }
+    }
+    return;
+  }
+
+  if (["missing_in_a", "missing_in_b", "none"].includes(data.status)) {
+    createTarget = data.status === "missing_in_a" ? "a" : "b";
+    const isB = data.status === "missing_in_b";
+    const isNone = data.status === "none";
+    const suggested =
+      data.status === "missing_in_a"
+        ? (data.value_b ?? "")
+        : data.status === "missing_in_b"
+        ? (data.value_a ?? "")
+        : "";
+    const createRegion = createTarget === "a" ? data.env_a : data.env_b;
+    const desc =
+      isNone
+        ? "No existe en ninguna región — escribí la data para crearlo."
+        : data.status === "missing_in_a"
+        ? `Falta en la región destino (${data.env_a}) — el valor de origen se puede editar antes de crear.`
+        : `Falta en la región de origen (${data.env_b}) — escribí la data para crearlo.`;
+
+    parts.push(
+      `<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; margin-top:14px;">
+         <div class="panel">
+           <div class="section-title"><strong>Data para crear</strong>
+           <span class="muted" style="font-size:12px;">${escapeHtml(desc)}</span></div>
+           <textarea id="create-value" class="change-input" rows="6" spellcheck="false">${escapeHtml(suggested)}</textarea>
+         </div>
+         <div class="panel script-block">
+           <div class="section-title"><strong>Comando de creación — ${escapeHtml(createRegion)}</strong></div>
+           <pre id="script-pre" class="script-block">Regenerando…</pre>
+           <div class="actions" style="margin-top:10px;"><span id="script-actions"></span><span id="exec-actions"></span></div>
+           <div id="exec-result"></div>
+         </div>
+       </div>`,
+    );
+    result.innerHTML = parts.join("");
+    const ta = document.getElementById("create-value");
+    ta.addEventListener("input", createOnEdit);
+    refreshCreateScript();
+    const wrap = document.getElementById("script-actions");
+    if (wrap) wrap.appendChild(makeCopyBtn());
+    const ewrap = document.getElementById("exec-actions");
+    if (ewrap) {
+      ewrap.appendChild(makeCreateExecuteBtn());
+      if (isB) {
+        ewrap.appendChild(
+          makeExecuteBtn("delete", () => "", "a", `Solo eliminar en ${data.env_a}`),
+        );
       }
     }
     return;

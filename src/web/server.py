@@ -82,6 +82,7 @@ class ApplyParamsRequest(BaseModel):
     new_secret_value: str = ""
     write_secret: bool = False
     write_param: bool = True
+    target: str = "a"  # "a" (destino) | "b" (origen)
 
 
 class ExecuteParamsRequest(BaseModel):
@@ -97,6 +98,7 @@ class ExecuteParamsRequest(BaseModel):
     new_secret_value: str = ""
     write_secret: bool = False
     write_param: bool = True
+    target: str = "a"  # "a" (destino) | "b" (origen)
 
 
 class CreateMultiParamsRequest(BaseModel):
@@ -320,9 +322,12 @@ def api_params_apply(req: ApplyParamsRequest):
             status_code=400,
             detail="El modo 'es un secreto' aplica solo cuando el servicio es SSM.",
         )
+    if req.target not in ("a", "b"):
+        raise HTTPException(status_code=400, detail="target debe ser 'a' o 'b'")
 
     cfg_a = _env_cfg(req.env_a)
     _env_cfg(req.env_b)
+    cfg_target = cfg_a if req.target != "b" else _env_cfg(req.env_b)
 
     if req.with_secret:
         steps = []
@@ -337,9 +342,9 @@ def api_params_apply(req: ApplyParamsRequest):
         script = "\n\n".join(st["command"] for st in steps)
     else:
         script = (
-            p.build_ssm_script(req.name, req.new_value, req.value_type, cfg_a)
+            p.build_ssm_script(req.name, req.new_value, req.value_type, cfg_target)
             if req.service == "ssm"
-            else p.build_secret_script(req.name, req.new_value, cfg_a)
+            else p.build_secret_script(req.name, req.new_value, cfg_target)
         )
         steps = [{"step": "update", "command": script}]
 
@@ -361,6 +366,8 @@ def api_params_apply_execute(req: ExecuteParamsRequest):
         raise HTTPException(status_code=400, detail="service debe ser 'ssm' o 'secretsmanager'")
     if req.op not in ("update", "delete"):
         raise HTTPException(status_code=400, detail="op debe ser 'update' o 'delete'")
+    if req.target not in ("a", "b"):
+        raise HTTPException(status_code=400, detail="target debe ser 'a' o 'b'")
     if not req.confirm:
         raise HTTPException(status_code=400, detail="Se requiere confirmación explícita para ejecutar.")
     if req.with_secret and req.service != "ssm":
@@ -376,6 +383,7 @@ def api_params_apply_execute(req: ExecuteParamsRequest):
 
     cfg_a = _env_cfg(req.env_a)
     _env_cfg(req.env_b)
+    cfg_target = cfg_a if req.target != "b" else _env_cfg(req.env_b)
 
     try:
         if req.with_secret:
@@ -406,17 +414,15 @@ def api_params_apply_execute(req: ExecuteParamsRequest):
                 "steps": step_results,
             }
         if req.service == "ssm":
-            result = (
-                p.put_parameter(cfg_a, req.name, req.new_value, req.value_type)
-                if req.op == "update"
-                else p.delete_parameter(cfg_a, req.name)
-            )
+            if req.op == "update":
+                result = p.put_parameter(cfg_target, req.name, req.new_value, req.value_type)
+            else:
+                result = p.delete_parameter(cfg_a, req.name)
         else:
-            result = (
-                p.update_secret(cfg_a, req.name, req.new_value)
-                if req.op == "update"
-                else p.delete_secret(cfg_a, req.name)
-            )
+            if req.op == "update":
+                result = p.update_secret(cfg_target, req.name, req.new_value)
+            else:
+                result = p.delete_secret(cfg_a, req.name)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Error de ejecución: {exc}") from exc
 
