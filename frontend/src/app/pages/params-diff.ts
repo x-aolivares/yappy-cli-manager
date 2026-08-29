@@ -110,7 +110,7 @@ type PairKey = 'param' | 'secret';
 
       @switch (mode()) {
         @case ('pair') {
-          @if (data()!.param_needs_write || data()!.secret_needs_write) {
+          @if (data()!.param_needs_write || data()!.secret_needs_write || withSecret()) {
             <div class="columns" style="margin-top:14px;">
               <div class="panel">
                 <div class="section-title"><strong>Región de Origen — {{ data()!.env_b }}</strong></div>
@@ -454,7 +454,7 @@ export class ParamsDiffPage {
         label: 'Secreto (Secrets Manager)',
         current: formatValue(d.secret_value_a ?? null),
         status: d.secret_status ?? '',
-        include: !!d.secret_needs_write,
+        include: !!(d.secret_needs_write || this.withSecret()),
       },
       {
         key: 'param' as PairKey,
@@ -464,7 +464,9 @@ export class ParamsDiffPage {
         include: !!d.param_needs_write,
       },
     ].filter((r) =>
-      r.key === 'secret' ? d.secret_needs_write : d.param_needs_write,
+      r.key === 'secret'
+        ? d.secret_needs_write || this.withSecret()
+        : d.param_needs_write,
     );
   });
 
@@ -586,9 +588,12 @@ export class ParamsDiffPage {
     if (d.pair) {
       this.pairState.set({
         param: { text: d.param_apply ?? '', include: !!d.param_needs_write },
-        secret: { text: d.secret_apply ?? '', include: !!d.secret_needs_write },
+        secret: {
+          text: d.secret_apply ?? d.secret_value_a ?? '',
+          include: !!(d.secret_needs_write || this.withSecret()),
+        },
       });
-      if (d.param_needs_write || d.secret_needs_write) {
+      if (d.param_needs_write || d.secret_needs_write || this.withSecret()) {
         this.pairOnEdit();
       }
       return;
