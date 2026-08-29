@@ -133,6 +133,101 @@ def test_build_secret_delete_script():
     assert "--region 'us-west-1'" in script
 
 
+class _FakeClient:
+    class ResourceNotFoundException(Exception):
+        pass
+
+    exceptions = type(
+        "Exceptions",
+        (),
+        {"ResourceNotFoundException": ResourceNotFoundException},
+    )()
+
+    def __init__(self, service):
+        self.service = service
+        self.calls = []
+
+    def put_parameter(self, **kwargs):
+        self.calls.append(kwargs)
+        return {"Version": 7}
+
+    def delete_parameter(self, **kwargs):
+        self.calls.append(kwargs)
+        return {}
+
+    def update_secret(self, **kwargs):
+        self.calls.append(kwargs)
+        return {}
+
+    def create_secret(self, **kwargs):
+        self.calls.append(kwargs)
+        return {}
+
+    def delete_secret(self, **kwargs):
+        self.calls.append(kwargs)
+        return {}
+
+
+class _FakeSession:
+    def __init__(self, client):
+        self._client = client
+
+    def client(self, service):
+        return self._client
+
+
+def test_put_parameter_overwrites_with_type(monkeypatch):
+    client = _FakeClient("ssm")
+    monkeypatch.setattr(p, "_boto_session", lambda profile, region: _FakeSession(client))
+
+    cfg = type("Cfg", (), {"profile": "prof-dev", "region": "us-east-1"})()
+    result = p.put_parameter(cfg, "/x", "20", "SecureString")
+
+    kwargs = client.calls[0]
+    assert kwargs["Name"] == "/x"
+    assert kwargs["Value"] == "20"
+    assert kwargs["Type"] == "SecureString"
+    assert kwargs["Overwrite"] is True
+    assert result["message"] == "Parámetro '/x' actualizado en us-east-1 (versión 7)."
+
+
+def test_update_secret_updates_and_creates_when_missing(monkeypatch):
+    client = _FakeClient("secretsmanager")
+    monkeypatch.setattr(p, "_boto_session", lambda profile, region: _FakeSession(client))
+
+    def raiser(*a, **k):
+        raise _FakeClient.ResourceNotFoundException("a")
+
+    cfg = type("Cfg", (), {"profile": "prof-qa", "region": "us-west-2"})()
+
+    result = p.update_secret(cfg, "/s", "pepitos")
+    assert client.calls[0]["SecretString"] == "pepitos"
+    assert "actualizado" in result["message"]
+
+    client.calls.clear()
+    client.update_secret = raiser
+    result = p.update_secret(cfg, "/s", "papitas")
+    assert client.calls[0]["Name"] == "/s"
+    assert "se creó" in result["message"]
+
+
+def test_delete_parameter_and_secret(monkeypatch):
+    client = _FakeClient("ssm")
+    monkeypatch.setattr(p, "_boto_session", lambda profile, region: _FakeSession(client))
+
+    cfg = type("Cfg", (), {"profile": "prof-dev", "region": "us-east-1"})()
+    result = p.delete_parameter(cfg, "/x")
+    assert client.calls[0]["Name"] == "/x"
+    assert "eliminado" in result["message"]
+
+    client2 = _FakeClient("secretsmanager")
+    monkeypatch.setattr(p, "_boto_session", lambda profile, region: _FakeSession(client2))
+    result = p.delete_secret(cfg, "/s")
+    assert client2.calls[0]["SecretId"] == "/s"
+    assert client2.calls[0]["ForceDeleteWithoutRecovery"] is True
+    assert "eliminado" in result["message"]
+
+
 def test_diff_params_missing_in_a(monkeypatch):
     class FakeCfg:
         profile = "a-profile"

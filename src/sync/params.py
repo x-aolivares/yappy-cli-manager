@@ -96,6 +96,64 @@ def build_secret_delete_script(name: str, cfg) -> str:
     )
 
 
+# --- Executors (mutating operations, only called on explicit user click) ---
+
+
+def put_parameter(cfg, name: str, value: str, value_type: str = "String") -> dict:
+    """Overwrite/create an SSM parameter on the target region."""
+    session = _boto_session(cfg.profile, cfg.region)
+    client = session.client("ssm")
+    vtype = value_type or "String"
+    try:
+        resp = client.put_parameter(
+            Name=name, Value=value, Type=vtype, Overwrite=True
+        )
+    except client.exceptions.ValidationException as exc:
+        # Overwriting an Advanced-tier parameter requires repeating its tier.
+        if "tier" not in str(exc).lower():
+            raise
+        resp = client.put_parameter(
+            Name=name, Value=value, Type=vtype, Overwrite=True, Tier="Advanced"
+        )
+    return {
+        "ok": True,
+        "message": (
+            f"Parámetro '{name}' actualizado en {cfg.region} "
+            f"(versión {resp.get('Version', '?')})."
+        ),
+    }
+
+
+def update_secret(cfg, name: str, value: str) -> dict:
+    """Update a Secrets Manager secret; create it first if it does not exist."""
+    session = _boto_session(cfg.profile, cfg.region)
+    client = session.client("secretsmanager")
+    try:
+        client.update_secret(SecretId=name, SecretString=value)
+    except client.exceptions.ResourceNotFoundException:
+        client.create_secret(Name=name, SecretString=value)
+        message = f"Secreto '{name}' no existía; se creó en {cfg.region}."
+    else:
+        message = f"Secreto '{name}' actualizado en {cfg.region}."
+    return {"ok": True, "message": message}
+
+
+def delete_parameter(cfg, name: str) -> dict:
+    """Permanently delete an SSM parameter on the target region."""
+    session = _boto_session(cfg.profile, cfg.region)
+    client = session.client("ssm")
+    client.delete_parameter(Name=name)
+    return {"ok": True, "message": f"Parámetro '{name}' eliminado en {cfg.region}."}
+
+
+def delete_secret(cfg, name: str) -> dict:
+    """Permanently delete a Secrets Manager secret (no recovery)."""
+    session = _boto_session(cfg.profile, cfg.region)
+    client = session.client("secretsmanager")
+    client.delete_secret(SecretId=name, ForceDeleteWithoutRecovery=True)
+    return {"ok": True, "message": f"Secreto '{name}' eliminado en {cfg.region}."}
+
+
 def _get(node, key):
     if isinstance(node, dict):
         return node.get(key)

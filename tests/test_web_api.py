@@ -8,10 +8,12 @@ from src.web.server import (
     api_envs,
     api_db_diff,
     api_params_apply,
+    api_params_apply_execute,
     api_params_diff,
     api_params_read,
     ApplyParamsRequest,
     DbDiffRequest,
+    ExecuteParamsRequest,
     ParamsDiffRequest,
     ReadParamsEntry,
 )
@@ -181,6 +183,103 @@ def test_api_params_apply_builds_secret_script(monkeypatch):
     assert "--secret-id '/s'" in payload["script"]
     assert "'pepitos'" in payload["script"]
     assert "--profile 'prof-qa'" in payload["script"]
+
+
+def test_api_params_apply_execute_requires_confirmation(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_params_apply_execute(
+            ExecuteParamsRequest(
+                env_a="dev", env_b="qa", service="ssm", name="/x",
+                new_value="20", confirm=False,
+            )
+        )
+    assert exc_info.value.status_code == 400
+    assert "confirmación" in str(exc_info.value.detail)
+
+
+def test_api_params_apply_execute_forwards_to_ssm_put(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    captured = {}
+
+    def fake_put(cfg, name, value, value_type):
+        captured["cfg_env"] = cfg._env
+        captured["value"] = value
+        captured["value_type"] = value_type
+        return {"ok": True, "message": "listo"}
+
+    monkeypatch.setattr(p, "put_parameter", fake_put)
+
+    payload = api_params_apply_execute(
+        ExecuteParamsRequest(
+            env_a="qa", env_b="dev", service="ssm", name="/x",
+            new_value="20", value_type="SecureString", confirm=True,
+        )
+    )
+
+    assert captured["cfg_env"] == "qa"
+    assert captured["value"] == "20"
+    assert captured["value_type"] == "SecureString"
+    assert payload["ok"] is True
+    assert payload["message"] == "listo"
+
+
+def test_api_params_apply_execute_forwards_to_secret_update(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    captured = {}
+
+    def fake_update(cfg, name, value):
+        captured["name"] = name
+        captured["value"] = value
+        return {"ok": True, "message": "ok"}
+
+    monkeypatch.setattr(p, "update_secret", fake_update)
+
+    api_params_apply_execute(
+        ExecuteParamsRequest(
+            env_a="qa", env_b="dev", service="secretsmanager", name="/s",
+            new_value="papitas", confirm=True,
+        )
+    )
+    assert captured == {"name": "/s", "value": "papitas"}
+
+
+def test_api_params_apply_execute_delete_forwards_to_ssm(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    captured = {}
+    monkeypatch.setattr(
+        p, "delete_parameter",
+        lambda cfg, name: captured.update(cfg_env=cfg._env, name=name) or {"ok": True, "message": "del"},
+    )
+    monkeypatch.setattr(
+        p, "delete_secret",
+        lambda cfg, name: captured.update(cfg_env=cfg._env, name=name) or {"ok": True, "message": "del"},
+    )
+
+    payload = api_params_apply_execute(
+        ExecuteParamsRequest(
+            env_a="qa", env_b="dev", service="ssm", name="/x", op="delete",
+            confirm=True,
+        )
+    )
+    assert captured == {"cfg_env": "qa", "name": "/x"}
+    assert payload["op"] == "delete"
 
 
 class _FakeConn:

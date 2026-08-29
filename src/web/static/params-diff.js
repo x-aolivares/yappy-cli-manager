@@ -168,6 +168,54 @@ function makePreviewCopyBtn() {
   return btn;
 }
 
+function renderExecResult(message, isError) {
+  const exec = document.getElementById("exec-result");
+  if (exec) {
+    exec.innerHTML = `<div class="note ${isError ? "err" : "ok"}">${isError ? "✗" : "✓"} ${escapeHtml(message)}</div>`;
+  }
+}
+
+function makeExecuteBtn(op, getValue) {
+  const btn = document.createElement("button");
+  btn.className = "primary";
+  const verb = op === "delete" ? "Eliminar" : "Ejecutar";
+  btn.textContent = `${verb} en ${data.env_a}`;
+  btn.addEventListener("click", async () => {
+    const msg =
+      op === "delete"
+        ? `¿Eliminar DEFINITIVAMENTE ${data.name} en ${data.env_a}?\nNo se puede deshacer.`
+        : `¿Ejecutar la actualización de ${data.name} en ${data.env_a}?`;
+    if (!confirm(msg)) return;
+    renderExecResult("Ejecutando…");
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/params/apply-execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          env_a: data.env_a,
+          env_b: data.env_b,
+          service: data.service,
+          op,
+          name: data.name,
+          new_value: op === "update" ? getValue() : "",
+          value_type: data.value_type_b || "String",
+          confirm: true,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
+      renderExecResult(body.message);
+      setTimeout(() => compareBtn.click(), 700);
+    } catch (e) {
+      renderExecResult(e.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  return btn;
+}
+
 /* --- Rendering --- */
 
 function render(payload) {
@@ -235,6 +283,8 @@ function render(payload) {
     if (wrap) wrap.appendChild(makeCopyBtn());
     const pwrap = document.getElementById("preview-actions");
     if (pwrap) pwrap.appendChild(makePreviewCopyBtn());
+    const ewrap = document.getElementById("exec-actions");
+    if (ewrap) ewrap.appendChild(makeExecuteBtn("update", () => serializeMerged()));
     return;
   }
 
@@ -251,6 +301,8 @@ function render(payload) {
     if (wrap) wrap.appendChild(makeCopyBtn());
     const pwrap = document.getElementById("preview-actions");
     if (pwrap) pwrap.appendChild(makePreviewCopyBtn());
+    const ewrap = document.getElementById("exec-actions");
+    if (ewrap) ewrap.appendChild(makeExecuteBtn("update", () => serializeMerged()));
     return;
   }
 
@@ -265,6 +317,8 @@ function render(payload) {
     const scriptSection = `<div class="panel script-block" style="margin-top:14px;">
         <div class="section-title"><strong>${data.status === "missing_in_b" ? "Comando de eliminación" : "Comando de actualización"} para la región destino (${escapeHtml(data.env_a)})</strong></div>
         ${preBlock(data.script || "No hay comando que ejecutar.", "—")}
+        <div class="actions" style="margin-top:10px;"><span id="script-actions"></span><span id="exec-actions"></span></div>
+        <div id="exec-result"></div>
       </div>`;
 
     parts.push(
@@ -279,9 +333,15 @@ function render(payload) {
 
     if (data.script) {
       copyButton(data.script).then((btn) => {
-        const wrap = result.querySelector(".script-block .actions");
+        const wrap = document.getElementById("script-actions");
         if (wrap) wrap.appendChild(btn);
       });
+      const ewrap = document.getElementById("exec-actions");
+      if (ewrap) {
+        const op = data.status === "missing_in_b" ? "delete" : "update";
+        const getValue = () => data.value_b ?? "";
+        ewrap.appendChild(makeExecuteBtn(op, getValue));
+      }
     }
     return;
   }
@@ -322,10 +382,11 @@ function renderChangesTable() {
         <pre id="preview-pre" class="script-block"></pre>
         <div class="actions" style="margin-top:10px;"><span id="preview-actions"></span></div>
       </div>
-      <div class="panel script-block">
+<div class="panel script-block">
         <div class="section-title"><strong>Comando de actualización para la región destino (${escapeHtml(data.env_a)})</strong></div>
         <pre id="script-pre" class="script-block">Regenerando…</pre>
-        <div class="actions" style="margin-top:10px;"><span id="script-actions"></span></div>
+        <div class="actions" style="margin-top:10px;"><span id="script-actions"></span><span id="exec-actions"></span></div>
+        <div id="exec-result"></div>
      </div>
    </div>`;
 }
@@ -345,7 +406,8 @@ function renderPlainEdit() {
      <div class="panel script-block">
        <div class="section-title"><strong>Comando de actualización para la región destino (${escapeHtml(data.env_a)})</strong></div>
        <pre id="script-pre" class="script-block">Regenerando…</pre>
-       <div class="actions" style="margin-top:10px;"><span id="script-actions"></span></div>
+       <div class="actions" style="margin-top:10px;"><span id="script-actions"></span><span id="exec-actions"></span></div>
+       <div id="exec-result"></div>
      </div>
    </div>`;
 }

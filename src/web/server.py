@@ -74,6 +74,17 @@ class ApplyParamsRequest(BaseModel):
     value_type: str = "String"
 
 
+class ExecuteParamsRequest(BaseModel):
+    env_a: str
+    env_b: str
+    service: str  # "ssm" | "secretsmanager"
+    op: str = "update"  # "update" | "delete"
+    name: str
+    new_value: str = ""
+    value_type: str = "String"
+    confirm: bool = False
+
+
 class ExecuteRequest(BaseModel):
     env: str
     object_type: str  # "table" | "procedure"
@@ -267,6 +278,47 @@ def api_params_apply(req: ApplyParamsRequest):
         "service": req.service,
         "name": req.name,
         "script": script,
+    }
+
+
+@app.post("/api/params/apply-execute")
+def api_params_apply_execute(req: ExecuteParamsRequest):
+    if req.env_a == req.env_b:
+        raise HTTPException(status_code=400, detail="env_a y env_b deben ser distintos")
+    if req.service not in ("ssm", "secretsmanager"):
+        raise HTTPException(status_code=400, detail="service debe ser 'ssm' o 'secretsmanager'")
+    if req.op not in ("update", "delete"):
+        raise HTTPException(status_code=400, detail="op debe ser 'update' o 'delete'")
+    if not req.confirm:
+        raise HTTPException(status_code=400, detail="Se requiere confirmación explícita para ejecutar.")
+
+    cfg_a = _env_cfg(req.env_a)
+    _env_cfg(req.env_b)
+
+    try:
+        if req.service == "ssm":
+            result = (
+                p.put_parameter(cfg_a, req.name, req.new_value, req.value_type)
+                if req.op == "update"
+                else p.delete_parameter(cfg_a, req.name)
+            )
+        else:
+            result = (
+                p.update_secret(cfg_a, req.name, req.new_value)
+                if req.op == "update"
+                else p.delete_secret(cfg_a, req.name)
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Error de ejecución: {exc}") from exc
+
+    return {
+        "ok": True,
+        "message": result["message"],
+        "env_a": req.env_a,
+        "env_b": req.env_b,
+        "service": req.service,
+        "op": req.op,
+        "name": req.name,
     }
 
 

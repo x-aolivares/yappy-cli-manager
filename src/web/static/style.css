@@ -250,6 +250,8 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .card p { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.5; }
 
 .note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.note.ok { color: var(--ok); }
+.note.err { color: var(--err); }
 
 .spinner {
   display: inline-block;
