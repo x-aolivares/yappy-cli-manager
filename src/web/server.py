@@ -130,6 +130,7 @@ class CreateSessionRequest(BaseModel):
     service: str = "ssm"
     keys: list[str] = []
     title: str = ""
+    reuse: bool = False
 
 
 class UpdateSessionItemRequest(BaseModel):
@@ -546,6 +547,7 @@ def api_sessions_create(req: CreateSessionRequest):
             keys=req.keys,
             service=req.service,
             title=req.title,
+            reuse=req.reuse,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

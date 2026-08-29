@@ -30,8 +30,8 @@
       <strong>una por línea</strong> (se detectan los secretos automáticamente), o como JSON con
       <code>is_secret: true|false</code>. Lo marcado como secreto se lee de <strong>Secrets
       Manager</strong>; el resto de <strong>SSM Parameter Store</strong> (con respaldo automático en
-      Secrets Manager si no existe en SSM). Con la misma lista podés <strong>crear una sesión</strong>
-      de <em>origen → destino</em> para sincronizar los parámetros ítem por ítem.
+      Secrets Manager si no existe en SSM). Al leer, la consulta queda <strong>anotada como sesión</strong>
+      de <em>origen → destino</em> con un link para seguir el progreso ítem por ítem.
     </p>
 
     <div class="panel">
@@ -44,7 +44,6 @@
 
       <div class="actions" style="justify-content:flex-end; margin-top:10px;">
         <button id="read-btn">Leer valores <span class="muted">(desde Origen)</span></button>
-        <button id="session-btn" class="secondary">Crear sesión</button>
       </div>
     </div>
 

@@ -95,12 +95,41 @@ def _row_to_item(row: sqlite3.Row) -> dict:
     }
 
 
+def _find_reusable(
+    env_a: str, env_b: str, service: str, names: list[str]
+) -> dict | None:
+    """Return an existing session with the same env pair, service and exact
+    parameter list (as a set), or None. Used to avoid duplicating sessions
+    when the user re-reads the same spreadsheet list."""
+    wanted = set(names)
+    if len(wanted) != len(names):
+        return None
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT s.id FROM sessions s "
+            "JOIN session_items i ON i.session_id = s.id "
+            "WHERE s.env_a = ? AND s.env_b = ? AND s.service = ? "
+            "GROUP BY s.id HAVING COUNT(DISTINCT i.name) = ?",
+            (env_a, env_b, service, len(names)),
+        ).fetchall()
+        candidate_ids = [r["id"] for r in rows]
+    for sid in candidate_ids:
+        with _connect() as conn:
+            got = conn.execute(
+                "SELECT name FROM session_items WHERE session_id = ?", (sid,)
+            ).fetchall()
+        if {g["name"] for g in got} == wanted:
+            return get_session(sid)
+    return None
+
+
 def create_session(
     env_a: str,
     env_b: str,
     keys: list[str],
     service: str = "ssm",
     title: str = "",
+    reuse: bool = False,
 ) -> dict:
     if env_a == env_b:
         raise ValueError("env_a y env_b deben ser distintos.")
@@ -118,6 +147,11 @@ def create_session(
         raise ValueError("La lista de parámetros no puede estar vacía.")
     if len(names) > 200:
         raise ValueError(f"Máximo 200 parámetros por sesión (recibiste {len(names)}).")
+
+    if reuse:
+        existing = _find_reusable(env_a, env_b, service, names)
+        if existing is not None:
+            return existing
 
     session_id = (
         f"ses-{env_b}-{env_a}-{datetime.now().strftime('%Y%m%d-%H%M%S')}-"

@@ -114,3 +114,40 @@ def test_list_sessions_newest_first_with_counts(store):
     assert [r["id"] for r in rows] == [s2["id"], s1["id"]]
     assert rows[0]["item_count"] == 2
     assert rows[0]["status_counts"]["aplicado"] == 1
+
+
+def test_reuse_returns_same_session_for_identical_list(store):
+    keys = ["/a", "/b", "/c"]
+    s1 = S.create_session(env_a="dev", env_b="qa", keys=keys, reuse=True)
+    s2 = S.create_session(env_a="dev", env_b="qa", keys=keys, reuse=True)
+    assert s2["id"] == s1["id"]
+    assert len(S.list_sessions()) == 1
+
+    s3 = S.create_session(env_a="dev", env_b="qa", keys=keys, reuse=True)
+    assert s3["id"] == s1["id"]
+
+
+def test_reuse_does_not_match_different_list_or_env(store):
+    s1 = S.create_session(env_a="dev", env_b="qa", keys=["/a", "/b"], reuse=True)
+
+    other_list = S.create_session(env_a="dev", env_b="qa", keys=["/a"], reuse=True)
+    assert other_list["id"] != s1["id"]
+    assert [i["name"] for i in other_list["items"]] == ["/a"]
+
+    other_env = S.create_session(env_a="prod", env_b="qa", keys=["/a", "/b"], reuse=True)
+    assert other_env["id"] != s1["id"]
+
+    other_service = S.create_session(
+        env_a="dev", env_b="qa", keys=["/a", "/b"], service="secretsmanager", reuse=True
+    )
+    assert other_service["id"] != s1["id"]
+
+
+def test_reuse_preserves_progress_of_existing_session(store):
+    s1 = S.create_session(env_a="dev", env_b="qa", keys=["/a", "/b"], reuse=True)
+    S.update_item(s1["id"], "/a", status="aplicado", notes="listo")
+
+    again = S.create_session(env_a="dev", env_b="qa", keys=["/a", "/b"], reuse=True)
+    assert again["id"] == s1["id"]
+    assert again["status_counts"]["aplicado"] == 1
+    assert again["items"][0]["notes"] == "listo"

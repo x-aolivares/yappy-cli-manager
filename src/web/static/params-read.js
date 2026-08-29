@@ -4,7 +4,6 @@ const envB = document.getElementById("env-b");
 const envA = document.getElementById("env-a");
 const serviceSel = document.getElementById("service");
 const readBtn = document.getElementById("read-btn");
-const sessionBtn = document.getElementById("session-btn");
 const entriesInput = document.getElementById("entries");
 const result = document.getElementById("result");
 
@@ -108,6 +107,38 @@ function render(data) {
      </div>`;
 }
 
+function ensureSession(entries) {
+  const envB_ = envB.value;
+  const envA_ = envA.value;
+  if (!envA_ || envA_ === envB_) return Promise.resolve();
+  const keys = entries.map((e) =>
+    typeof e === "string" ? e : e.key || e.name || ""
+  );
+  return fetch("/api/sessions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      env_a: envA_,
+      env_b: envB_,
+      service: serviceSel.value,
+      keys,
+      reuse: true,
+    }),
+  })
+    .then(async (res) => {
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
+      return body;
+    })
+    .then((body) => {
+      result.insertAdjacentHTML(
+        "afterbegin",
+        `<div class="ok-box">Sesión de trabajo <strong>${escapeHtml(body.title)}</strong> lista · ` +
+          `<a href="/sessions/${encodeURIComponent(body.id)}">Abrir en Sesiones →</a></div>`,
+      );
+    });
+}
+
 readBtn.addEventListener("click", async () => {
   const env = envB.value;
   if (!env) {
@@ -141,59 +172,10 @@ readBtn.addEventListener("click", async () => {
       return;
     }
     render(data);
+    ensureSession(entries).catch(() => {});
   } catch (e) {
     result.innerHTML = renderError("Error de conexión con el backend: " + e.message);
   } finally {
     readBtn.disabled = false;
-  }
-});
-
-sessionBtn.addEventListener("click", async () => {
-  const envB_ = envB.value;
-  const envA_ = envA.value;
-  if (!envB_ || !envA_) {
-    result.innerHTML = renderError("Seleccioná la región de origen y la de destino.");
-    return;
-  }
-  if (envA_ === envB_) {
-    result.innerHTML = renderError("La región de origen y la de destino deben ser distintas.");
-    return;
-  }
-
-  let entries;
-  try {
-    entries = collectEntries();
-  } catch (e) {
-    result.innerHTML = renderError(e.message);
-    return;
-  }
-  const keys = entries.map((e) => (typeof e === "string" ? e : e.key || e.name || ""));
-
-  sessionBtn.disabled = true;
-  result.innerHTML = `<div class="panel"><span class="spinner"></span>Creando sesión con ${keys.length} parámetros (${escapeHtml(
-    envB_,
-  )} → ${escapeHtml(envA_)})...</div>`;
-
-  try {
-    const res = await fetch("/api/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        env_a: envA_,
-        env_b: envB_,
-        service: serviceSel.value,
-        keys,
-      }),
-    });
-    const body = await res.json();
-    if (!res.ok) {
-      result.innerHTML = renderError(body.detail || "Error desconocido");
-      return;
-    }
-    location.href = "/sessions/" + encodeURIComponent(body.id);
-  } catch (e) {
-    result.innerHTML = renderError("Error de conexión con el backend: " + e.message);
-  } finally {
-    sessionBtn.disabled = false;
   }
 });
