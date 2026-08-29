@@ -23,6 +23,7 @@ from ..sync import diff as db_diff
 from ..sync import exec as syncexec
 from ..sync import params as p
 from ..sync.conn import SyncError, connect
+from ..web import sessions as S
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -40,6 +41,8 @@ _PAGES = {
     "/params-create": "params-create.html",
     "/params-edit": "params-edit.html",
     "/compile": "compile.html",
+    "/sessions": "sessions.html",
+    "/sessions/{session_id}": "sessions.html",
 }
 
 for _route, _fname in _PAGES.items():
@@ -117,6 +120,26 @@ class ReadParamsEntry(BaseModel):
     key: str = ""
     name: str = ""
     is_secret: bool = False
+
+
+class CreateSessionRequest(BaseModel):
+    env_a: str
+    env_b: str
+    service: str = "ssm"
+    keys: list[str] = []
+    title: str = ""
+
+
+class UpdateSessionItemRequest(BaseModel):
+    name: str
+    status: str | None = None
+    service: str | None = None
+    is_secret: bool | None = None
+    diff_json: str | None = None
+    diff_err: str | None = None
+    script: str | None = None
+    preview: str | None = None
+    notes: str | None = None
 
 
 def _env_cfg(env: str) -> Config:
@@ -506,6 +529,70 @@ def api_params_read(env: str, body: list[ReadParamsEntry | str]):
         "ok_count": sum(1 for r in results if r.get("ok")),
         "err_count": sum(1 for r in results if not r.get("ok")),
     }
+
+
+@app.post("/api/sessions")
+def api_sessions_create(req: CreateSessionRequest):
+    try:
+        return S.create_session(
+            env_a=req.env_a,
+            env_b=req.env_b,
+            keys=req.keys,
+            service=req.service,
+            title=req.title,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Error de sesión: {exc}") from exc
+
+
+@app.get("/api/sessions")
+def api_sessions_list():
+    return {"sessions": S.list_sessions()}
+
+
+@app.get("/api/sessions/{session_id}")
+def api_sessions_get(session_id: str):
+    try:
+        return S.get_session(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/sessions/{session_id}")
+def api_sessions_delete(session_id: str):
+    try:
+        S.delete_session(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"ok": True}
+
+
+@app.post("/api/sessions/{session_id}/items")
+def api_sessions_item_update(session_id: str, req: UpdateSessionItemRequest):
+    if not req.name or not req.name.strip():
+        raise HTTPException(status_code=400, detail="Ingresá el nombre del ítem.")
+    if req.status is not None and req.status not in S.VALID_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"status debe ser uno de: {', '.join(S.VALID_STATUSES)}.",
+        )
+    try:
+        return S.update_item(
+            session_id,
+            req.name,
+            status=req.status,
+            service=req.service,
+            is_secret=req.is_secret,
+            diff_json=req.diff_json,
+            diff_err=req.diff_err,
+            script=req.script,
+            preview=req.preview,
+            notes=req.notes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.post("/api/execute/sql")

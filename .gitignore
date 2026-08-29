@@ -28,5 +28,8 @@ purge.txt
 # DB backups
 backups/
 
+# Session store (local SQLite, review ledgers)
+data/
+
 # uv lockfile (no se usa uv en este repo)
 uv.lock

@@ -17,6 +17,7 @@
       <a href="/db-diff">DB Diff</a>
       <a href="/params-diff">Parámetros</a>
       <a href="/params-read" class="active">Leer Parámetros</a>
+      <a href="/sessions">Sesiones</a>
       <a href="/params-create">Crear Parámetro</a>
       <a href="/params-edit">Editar Parámetro</a>
       <a href="/compile">Compilar</a>
@@ -29,7 +30,8 @@
       secretos automáticamente), o como JSON con <code>is_secret: true|false</code>. Lo marcado
       como secreto se lee de <strong>Secrets Manager</strong>; el resto de <strong>SSM Parameter
       Store</strong> (con respaldo automático en Secrets Manager si no existe en SSM). Los
-      valores se muestran tal cual.
+      valores se muestran tal cual. Con la misma lista podés <strong>crear una sesión</strong> para
+      sincronizarlos ítem por ítem.
     </p>
 
     <div class="panel">
@@ -45,6 +47,35 @@
 
       <div class="actions" style="justify-content:flex-end; margin-top:10px;">
         <button id="read-btn">Leer valores</button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <div class="section-title">
+        <strong>Nueva sesión de sincronización</strong>
+        <span class="muted" style="font-size:12px;">
+          (usa la misma lista de arriba — quedá guardada para ir ítem por ítem en Parámetros)
+        </span>
+      </div>
+      <div class="form-grid">
+        <div>
+          <label for="ses-env-b">Región de Origen</label>
+          <select id="ses-env-b"></select>
+        </div>
+        <div>
+          <label for="ses-env-a">Región Destino</label>
+          <select id="ses-env-a"></select>
+        </div>
+        <div>
+          <label for="ses-service">Servicio</label>
+          <select id="ses-service">
+            <option value="ssm">SSM Parameter Store</option>
+            <option value="secretsmanager">Secrets Manager</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions" style="justify-content:flex-end; margin-top:10px;">
+        <button id="session-btn">Crear sesión</button>
       </div>
     </div>
 

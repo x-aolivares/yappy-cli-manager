@@ -2,10 +2,46 @@ const envSel = document.getElementById("env");
 const readBtn = document.getElementById("read-btn");
 const entriesInput = document.getElementById("entries");
 const result = document.getElementById("result");
+const sesEnvB = document.getElementById("ses-env-b");
+const sesEnvA = document.getElementById("ses-env-a");
+const sessionBtn = document.getElementById("session-btn");
 
-loadEnvs(envSel).catch((e) => {
+loadEnvs(envSel, sesEnvB, sesEnvA).catch((e) => {
   result.innerHTML = renderError("No se pudieron cargar los ambientes: " + e.message);
 });
+
+function collectEntries() {
+  const raw = entriesInput.value.trim();
+  if (raw.startsWith("[")) {
+    let entries;
+    try {
+      entries = JSON.parse(raw);
+    } catch (e) {
+      throw new Error(
+        "El JSON no es válido: " +
+          e.message +
+          ' — formato esperado: [{ "key": "/path", "is_secret": false }] o una clave por línea',
+      );
+    }
+    if (!Array.isArray(entries) || entries.length === 0) {
+      throw new Error(
+        'El JSON debe ser una lista, por ejemplo: [{ "key": "/yappy/dev/rate", "is_secret": false }]',
+      );
+    }
+    return entries;
+  }
+  const entries = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((key) => ({ key, is_secret: false }));
+  if (entries.length === 0) {
+    throw new Error(
+      'Pegá una clave por línea, por ejemplo: /prod/ecommerce/db/master_url — o un JSON como [{ "key": "/path", "is_secret": false }]',
+    );
+  }
+  return entries;
+}
 
 function formatValue(v) {
   if (v === null || v === undefined || v === "") return "";
@@ -66,36 +102,11 @@ readBtn.addEventListener("click", async () => {
   }
 
   let entries;
-  const raw = entriesInput.value.trim();
-  if (raw.startsWith("[")) {
-    try {
-      entries = JSON.parse(raw);
-    } catch (e) {
-      result.innerHTML = renderError(
-        "El JSON no es válido: " +
-          e.message +
-          ' — formato esperado: [{ "key": "/path", "is_secret": false }] o una clave por línea',
-      );
-      return;
-    }
-    if (!Array.isArray(entries) || entries.length === 0) {
-      result.innerHTML = renderError(
-        'El JSON debe ser una lista, por ejemplo: [{ "key": "/yappy/dev/rate", "is_secret": false }]',
-      );
-      return;
-    }
-  } else {
-    entries = raw
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((key) => ({ key, is_secret: false }));
-    if (entries.length === 0) {
-      result.innerHTML = renderError(
-        'Pegá una clave por línea, por ejemplo: /prod/ecommerce/db/master_url — o un JSON como [{ "key": "/path", "is_secret": false }]',
-      );
-      return;
-    }
+  try {
+    entries = collectEntries();
+  } catch (e) {
+    result.innerHTML = renderError(e.message);
+    return;
   }
 
   readBtn.disabled = true;
@@ -120,5 +131,55 @@ readBtn.addEventListener("click", async () => {
     result.innerHTML = renderError("Error de conexión con el backend: " + e.message);
   } finally {
     readBtn.disabled = false;
+  }
+});
+
+sessionBtn.addEventListener("click", async () => {
+  const envB = sesEnvB.value;
+  const envA = sesEnvA.value;
+  if (!envB || !envA) {
+    result.innerHTML = renderError("Seleccioná la región de origen y la de destino.");
+    return;
+  }
+  if (envA === envB) {
+    result.innerHTML = renderError("La región de origen y la de destino deben ser distintas.");
+    return;
+  }
+
+  let entries;
+  try {
+    entries = collectEntries();
+  } catch (e) {
+    result.innerHTML = renderError(e.message);
+    return;
+  }
+  const keys = entries.map((e) => (typeof e === "string" ? e : e.key || e.name || ""));
+
+  sessionBtn.disabled = true;
+  result.innerHTML = `<div class="panel"><span class="spinner"></span>Creando sesión con ${keys.length} parámetros (${escapeHtml(
+    envB,
+  )} → ${escapeHtml(envA)})...</div>`;
+
+  try {
+    const res = await fetch("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        env_a: envA,
+        env_b: envB,
+        service: document.getElementById("ses-service").value,
+        keys,
+      }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      result.innerHTML = renderError(body.detail || "Error desconocido");
+      return;
+    }
+    location.href = "/sessions/" + encodeURIComponent(body.id);
+  } catch (e) {
+    result.innerHTML = renderError("Error de conexión con el backend: " + e.message);
+  } finally {
+    sessionBtn.disabled = false;
   }
 });

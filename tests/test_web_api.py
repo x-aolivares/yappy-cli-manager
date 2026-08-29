@@ -13,12 +13,19 @@ from src.web.server import (
     api_params_get,
     api_params_multi,
     api_params_read,
+    api_sessions_create,
+    api_sessions_delete,
+    api_sessions_get,
+    api_sessions_item_update,
+    api_sessions_list,
     ApplyParamsRequest,
     CreateMultiParamsRequest,
+    CreateSessionRequest,
     DbDiffRequest,
     ExecuteParamsRequest,
     ParamsDiffRequest,
     ReadParamsEntry,
+    UpdateSessionItemRequest,
 )
 
 
@@ -134,6 +141,85 @@ def test_api_params_read_empty_list_returns_400(monkeypatch):
 
     assert exc_info.value.status_code == 400
     assert "vacía" in str(exc_info.value.detail)
+
+
+# --- Sessions API ---
+
+
+def test_api_sessions_create_and_get(monkeypatch, tmp_path):
+    import os
+
+    monkeypatch.setenv("YAPPY_SESSIONS_DB", str(tmp_path / "s.db"))
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    created = api_sessions_create(
+        CreateSessionRequest(env_a="dev", env_b="qa", keys=["/a", "/b"])
+    )
+    assert created["env_a"] == "dev" and created["env_b"] == "qa"
+    assert len(created["items"]) == 2
+
+    got = api_sessions_get(session_id=created["id"])
+    assert [i["name"] for i in got["items"]] == ["/a", "/b"]
+
+    listed = api_sessions_list()
+    assert listed["sessions"][0]["id"] == created["id"]
+
+
+def test_api_sessions_create_validation(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        api_sessions_create(
+            CreateSessionRequest(env_a="dev", env_b="dev", keys=["/a"])
+        )
+    assert exc_info.value.status_code == 400
+
+
+def test_api_sessions_item_update(monkeypatch, tmp_path):
+    monkeypatch.setenv("YAPPY_SESSIONS_DB", str(tmp_path / "s.db"))
+    created = api_sessions_create(
+        CreateSessionRequest(env_a="dev", env_b="qa", keys=["/a"])
+    )
+
+    item = api_sessions_item_update(
+        session_id=created["id"],
+        req=UpdateSessionItemRequest(name="/a", status="aplicado", script="aws ssm ..."),
+    )
+    assert item["status"] == "aplicado"
+    assert item["script"] == "aws ssm ..."
+
+    got = api_sessions_get(session_id=created["id"])
+    assert got["status_counts"]["aplicado"] == 1
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_sessions_item_update(
+            session_id=created["id"],
+            req=UpdateSessionItemRequest(name="/a", status="invalido"),
+        )
+    assert exc_info.value.status_code == 400
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_sessions_item_update(
+            session_id=created["id"],
+            req=UpdateSessionItemRequest(name="/no-existe", status="aplicado"),
+        )
+    assert exc_info.value.status_code == 404
+
+
+def test_api_sessions_delete(monkeypatch, tmp_path):
+    monkeypatch.setenv("YAPPY_SESSIONS_DB", str(tmp_path / "s.db"))
+    created = api_sessions_create(
+        CreateSessionRequest(env_a="dev", env_b="qa", keys=["/a"])
+    )
+    assert api_sessions_delete(session_id=created["id"]) == {"ok": True}
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_sessions_get(session_id=created["id"])
+    assert exc_info.value.status_code == 404
 
 
 class _CaptureDiff:

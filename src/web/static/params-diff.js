@@ -5,15 +5,61 @@ const secretWrap = document.getElementById("secret-wrap");
 const compareBtn = document.getElementById("compare-btn");
 const result = document.getElementById("result");
 
+/* --- Session context (opened from /sessions/<id>) --- */
+
+const q = new URLSearchParams(location.search);
+const SESSION_ID = q.get("session");
+
+function sessionUpdate(fields) {
+  if (!SESSION_ID || !data || !data.name) return Promise.resolve();
+  return fetch(
+    "/api/sessions/" + encodeURIComponent(SESSION_ID) + "/items",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: data.name, ...fields }),
+    },
+  ).catch(() => null);
+}
+
 function syncSecretOption() {
   secretWrap.hidden = serviceSel.value !== "ssm";
 }
 serviceSel.addEventListener("change", syncSecretOption);
 syncSecretOption();
 
-loadEnvs(envB, envA).catch((e) => {
-  result.innerHTML = renderError("No se pudieron cargar los ambientes: " + e.message);
-});
+loadEnvs(envB, envA)
+  .then(() => applyQueryParams())
+  .catch((e) => {
+    result.innerHTML = renderError("No se pudieron cargar los ambientes: " + e.message);
+  });
+
+function applyQueryParams() {
+  const name = q.get("name");
+  const envAq = q.get("env_a");
+  const envBq = q.get("env_b");
+  const service = q.get("service");
+  const withSecret = q.get("with_secret");
+
+  const sessionBack = document.getElementById("session-back");
+  if (SESSION_ID && sessionBack) {
+    sessionBack.style.display = "inline-block";
+    sessionBack.href = "/sessions/" + encodeURIComponent(SESSION_ID);
+  }
+
+  if (name != null) document.getElementById("name").value = name;
+  if (envAq) envA.value = envAq;
+  if (envBq) envB.value = envBq;
+  if (service === "ssm" || service === "secretsmanager") serviceSel.value = service;
+  if (withSecret && withSecret !== "0" && serviceSel.value === "ssm") {
+    document.getElementById("with-secret").checked = true;
+  }
+  syncSecretOption();
+
+  if (name != null && name.trim()) {
+    compareBtn.click();
+  }
+}
 
 /* --- Interactive change selection state --- */
 
@@ -215,6 +261,15 @@ function makeExecuteBtn(op, getValue) {
       const body = await res.json();
       if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
       renderExecResult(body.message);
+      if (SESSION_ID) {
+        sessionUpdate({
+          status: "aplicado",
+          service: data.service,
+          is_secret: !!data.pair,
+          script: scriptText,
+          notes: body.message,
+        });
+      }
       setTimeout(() => compareBtn.click(), 700);
     } catch (e) {
       renderExecResult(e.message, true);
@@ -341,6 +396,15 @@ function makePairExecuteBtn() {
         .map((s) => `✓ ${escapeHtml(s.message)}`)
         .join("<br>");
       if (exec) exec.innerHTML = `<div class="note ok">${lines}</div>`;
+      if (SESSION_ID) {
+        sessionUpdate({
+          status: "aplicado",
+          service: "ssm",
+          is_secret: true,
+          script: scriptText,
+          notes: (body.steps || []).map((s) => s.message).join(" · "),
+        });
+      }
       setTimeout(() => compareBtn.click(), 700);
     } catch (e) {
       if (exec) exec.innerHTML = `<div class="note err">✗ ${escapeHtml(e.message)}</div>`;
@@ -687,9 +751,30 @@ compareBtn.addEventListener("click", async () => {
     const data = await res.json();
     if (!res.ok) {
       result.innerHTML = renderError(data.detail || "Error desconocido");
+      if (SESSION_ID) {
+        sessionUpdate({
+          service: payload.service,
+          is_secret: payload.with_secret,
+          diff_err: data.detail || String(res.status),
+        });
+      }
       return;
     }
     render(data);
+    if (SESSION_ID) {
+      sessionUpdate({
+        status: "revisado",
+        service: payload.service,
+        is_secret: payload.with_secret,
+        diff_json: JSON.stringify(data),
+        diff_err: null,
+        script: data.script || null,
+        preview: data.pair
+          ? null
+          : (data.patch_value ?? (data.value_b ?? null)),
+        notes: (data.notes || []).join("\n"),
+      });
+    }
   } catch (e) {
     result.innerHTML = renderError("Error de conexión con el backend: " + e.message);
   } finally {
