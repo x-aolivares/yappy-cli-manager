@@ -33,3 +33,5 @@ data/
 
 # uv lockfile (no se usa uv en este repo)
 uv.lock
+node_modules
+frontend/node_modules
