@@ -332,3 +332,126 @@ def test_diff_params_missing_in_b_generates_delete_script(monkeypatch):
     assert secret.script.startswith("aws secretsmanager delete-secret")
     assert "--secret-id '/s'" in secret.script
     assert "--force-delete-without-recovery" in secret.script
+
+
+class _PairCfg:
+    profile = "a-profile"
+    region = "us-east-1"
+
+    def __init__(self, name):
+        self.name = name
+
+
+def _pair_reads(monkeypatch, param_a=None, param_b=None, secret_a=None, secret_b=None):
+    def fake_param(cfg, name):
+        v = param_a if cfg.name == "a" else param_b
+        if v is None:
+            raise p.ParamNotFound(name)
+        return (v, "SecureString")
+
+    def fake_secret(cfg, name):
+        v = secret_a if cfg.name == "a" else secret_b
+        if v is None:
+            raise p.ParamNotFound(name)
+        return v
+
+    monkeypatch.setattr(p, "read_parameter", fake_param)
+    monkeypatch.setattr(p, "read_secret", fake_secret)
+
+
+def test_diff_params_pair_secret_first_then_parameter(monkeypatch):
+    """Ejemplo del usuario: param value y secret-value cambian; secreto va primero."""
+    _pair_reads(
+        monkeypatch,
+        param_a="this-is-provider-password", param_b="this-is-new-password",
+        secret_a="prrito$14", secret_b="prrito$2026",
+    )
+    result = p.diff_params_pair(_PairCfg("a"), _PairCfg("b"), "/abc/def/jklmn", "a", "b")
+
+    assert result.pair
+    assert result.status == "different"
+    assert result.param_apply == "this-is-new-password"
+    assert result.secret_apply == "prrito$2026"
+    assert [s["step"] for s in result.steps] == ["secreto", "parámetro"]
+    assert "update-secret" in result.steps[0]["command"]
+    assert "put-parameter" in result.steps[1]["command"]
+    assert "secreto" in result.notes[0]
+
+
+def test_diff_params_pair_only_secret_differs(monkeypatch):
+    _pair_reads(
+        monkeypatch,
+        param_a="same", param_b="same",
+        secret_a="old", secret_b="new",
+    )
+    result = p.diff_params_pair(_PairCfg("a"), _PairCfg("b"), "/s", "a", "b")
+
+    assert result.status == "different"
+    assert result.param_needs_write is False
+    assert result.secret_needs_write is True
+    assert [s["step"] for s in result.steps] == ["secreto"]
+
+
+def test_diff_params_pair_equal(monkeypatch):
+    _pair_reads(
+        monkeypatch,
+        param_a="v", param_b="v", secret_a="s", secret_b="s",
+    )
+    result = p.diff_params_pair(_PairCfg("a"), _PairCfg("b"), "/x", "a", "b")
+
+    assert result.status == "equal"
+    assert result.param_needs_write is False
+    assert result.secret_needs_write is False
+    assert result.steps == []
+    assert result.script is None
+
+
+def test_diff_params_pair_missing_in_a_creates_both(monkeypatch):
+    _pair_reads(
+        monkeypatch,
+        param_a=None, param_b="p", secret_a=None, secret_b="s",
+    )
+    result = p.diff_params_pair(_PairCfg("a"), _PairCfg("b"), "/x", "a", "b")
+
+    assert result.status == "missing_in_a"
+    assert result.param_status == "missing_in_a"
+    assert result.secret_status == "missing_in_a"
+    assert [s["step"] for s in result.steps] == ["secreto", "parámetro"]
+    assert "crear" in result.notes[0]
+
+
+def test_diff_params_pair_missing_in_b_never_deletes(monkeypatch):
+    _pair_reads(
+        monkeypatch,
+        param_a="p", param_b=None, secret_a="s", secret_b=None,
+    )
+    result = p.diff_params_pair(_PairCfg("a"), _PairCfg("b"), "/x", "a", "b")
+
+    assert result.status == "missing_in_b"
+    assert result.script is None
+    assert result.steps == []
+    assert "no se elimina" in result.notes[0]
+
+
+def test_diff_params_pair_none_nowhere(monkeypatch):
+    _pair_reads(monkeypatch, param_a=None, param_b=None, secret_a=None, secret_b=None)
+    result = p.diff_params_pair(_PairCfg("a"), _PairCfg("b"), "/x", "a", "b")
+
+    assert result.status == "none"
+
+
+def test_diff_params_pair_json_param_uses_patch(monkeypatch):
+    import json
+
+    _pair_reads(
+        monkeypatch,
+        param_a='{"a": 1}', param_b='{"a": 1, "b": 2}',
+        secret_a="same", secret_b="same",
+    )
+    result = p.diff_params_pair(_PairCfg("a"), _PairCfg("b"), "/j", "a", "b")
+
+    assert result.secret_needs_write is False
+    assert result.param_needs_write is True
+    assert result.param_status == "different"
+    # el patch JSON fusiona el valor del origen sin tocar el resto
+    assert json.loads(result.param_apply) == {"a": 1, "b": 2}

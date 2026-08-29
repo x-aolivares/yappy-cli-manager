@@ -150,6 +150,160 @@ def test_api_params_diff_forwards_include_deletes(monkeypatch):
     assert payload["status"] == "missing_in_b"
 
 
+def test_api_params_diff_with_secret_forwards_to_pair(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    captured = {}
+    monkeypatch.setattr(
+        p, "diff_params_pair",
+        lambda cfg_a, cfg_b, name, env_a, env_b: captured.update(
+            name=name, env_a=env_a, env_b=env_b, cfg_a=cfg_a._env, cfg_b=cfg_b._env
+        ) or p.ParamDiffResult(
+            env_a=env_a, env_b=env_b, service="ssm", name=name,
+            status="different", pair=True, param_needs_write=True,
+            secret_needs_write=True,
+        ),
+    )
+
+    payload = api_params_diff(
+        ParamsDiffRequest(
+            env_a="dev", env_b="qa", service="ssm", name="/abc", with_secret=True,
+        )
+    )
+    assert captured == {"name": "/abc", "env_a": "dev", "env_b": "qa", "cfg_a": "dev", "cfg_b": "qa"}
+    assert payload["pair"] is True
+
+
+def test_api_params_diff_with_secret_rejected_for_secretsmanager(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_params_diff(
+            ParamsDiffRequest(
+                env_a="dev", env_b="qa", service="secretsmanager",
+                name="/abc", with_secret=True,
+            )
+        )
+    assert exc_info.value.status_code == 400
+    assert "SSM" in str(exc_info.value.detail)
+
+
+def test_api_params_apply_with_secret_builds_steps_in_order(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    captured = []
+    monkeypatch.setattr(
+        p, "build_secret_script",
+        lambda name, value, cfg: captured.append(("secret", name, value)) or "SECRET SCRIPT",
+    )
+    monkeypatch.setattr(
+        p, "build_ssm_script",
+        lambda name, value, value_type, cfg: captured.append(("param", name, value, value_type)) or "PARAM SCRIPT",
+    )
+
+    payload = api_params_apply(
+        ApplyParamsRequest(
+            env_a="dev", env_b="qa", service="ssm", name="/abc",
+            new_value="this-is-new-password", value_type="SecureString",
+            with_secret=True, new_secret_value="prrito$2026",
+            write_secret=True, write_param=True,
+        )
+    )
+
+    assert [c[0] for c in captured] == ["secret", "param"]
+    assert payload["script"] == "SECRET SCRIPT\n\nPARAM SCRIPT"
+    assert [s["step"] for s in payload["steps"]] == ["secreto", "parámetro"]
+
+
+def test_api_params_apply_execute_with_secret_runs_secret_then_param(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    calls = []
+    monkeypatch.setattr(
+        p, "update_secret",
+        lambda cfg, name, value: calls.append(("secret", cfg._env, name, value))
+        or {"ok": True, "message": "secreto ok"},
+    )
+    monkeypatch.setattr(
+        p, "put_parameter",
+        lambda cfg, name, value, value_type: calls.append(("param", cfg._env, name, value, value_type))
+        or {"ok": True, "message": "param ok"},
+    )
+
+    payload = api_params_apply_execute(
+        ExecuteParamsRequest(
+            env_a="dev", env_b="qa", service="ssm", op="update", name="/abc",
+            new_value="this-is-new-password", value_type="SecureString",
+            with_secret=True, new_secret_value="prrito$2026",
+            write_secret=True, write_param=True, confirm=True,
+        )
+    )
+
+    assert [c[0] for c in calls] == ["secret", "param"]
+    assert calls[0][1:] == ("dev", "/abc", "prrito$2026")
+    assert "secreto ok" in payload["message"]
+    assert payload["steps"][0]["step"] == "secreto"
+    assert payload["steps"][1]["step"] == "parámetro"
+
+
+def test_api_params_apply_execute_with_secret_aborts_param_when_secret_fails(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    calls = []
+    monkeypatch.setattr(
+        p, "update_secret",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("secreto falló")),
+    )
+    monkeypatch.setattr(
+        p, "put_parameter",
+        lambda *a, **k: calls.append("param") or {"ok": True, "message": "param ok"},
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_params_apply_execute(
+            ExecuteParamsRequest(
+                env_a="dev", env_b="qa", service="ssm", op="update", name="/abc",
+                with_secret=True, new_secret_value="x",
+                write_secret=True, write_param=True, confirm=True,
+            )
+        )
+    assert exc_info.value.status_code == 400
+    assert "secreto falló" in str(exc_info.value.detail)
+    assert calls == []  # el parámetro NO se toca si el secreto falló
+
+
+def test_api_params_apply_execute_with_secret_delete_rejected(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_params_apply_execute(
+            ExecuteParamsRequest(
+                env_a="dev", env_b="qa", service="ssm", op="delete", name="/abc",
+                with_secret=True, confirm=True,
+            )
+        )
+    assert exc_info.value.status_code == 400
+    assert "no admite eliminaciones" in str(exc_info.value.detail)
+
+
 def test_api_params_apply_builds_ssm_script(monkeypatch):
     monkeypatch.setattr(
         Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])

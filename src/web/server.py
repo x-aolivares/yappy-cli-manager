@@ -65,6 +65,7 @@ class ParamsDiffRequest(BaseModel):
     service: str  # "ssm" | "secretsmanager"
     name: str
     include_deletes: bool = False
+    with_secret: bool = False
 
 
 class ApplyParamsRequest(BaseModel):
@@ -74,6 +75,10 @@ class ApplyParamsRequest(BaseModel):
     name: str
     new_value: str
     value_type: str = "String"
+    with_secret: bool = False
+    new_secret_value: str = ""
+    write_secret: bool = False
+    write_param: bool = True
 
 
 class ExecuteParamsRequest(BaseModel):
@@ -85,6 +90,10 @@ class ExecuteParamsRequest(BaseModel):
     new_value: str = ""
     value_type: str = "String"
     confirm: bool = False
+    with_secret: bool = False
+    new_secret_value: str = ""
+    write_secret: bool = False
+    write_param: bool = True
 
 
 class CreateMultiParamsRequest(BaseModel):
@@ -255,15 +264,23 @@ def api_params_diff(req: ParamsDiffRequest):
         raise HTTPException(status_code=400, detail="env_a y env_b deben ser distintos")
     if req.service not in ("ssm", "secretsmanager"):
         raise HTTPException(status_code=400, detail="service debe ser 'ssm' o 'secretsmanager'")
+    if req.with_secret and req.service != "ssm":
+        raise HTTPException(
+            status_code=400,
+            detail="El modo 'es un secreto' aplica solo cuando el servicio es SSM.",
+        )
 
     cfg_a = _env_cfg(req.env_a)
     cfg_b = _env_cfg(req.env_b)
 
     try:
-        result = p.diff_params(
-            cfg_a, cfg_b, req.service, req.name, req.env_a, req.env_b,
-            include_deletes=req.include_deletes,
-        )
+        if req.with_secret:
+            result = p.diff_params_pair(cfg_a, cfg_b, req.name, req.env_a, req.env_b)
+        else:
+            result = p.diff_params(
+                cfg_a, cfg_b, req.service, req.name, req.env_a, req.env_b,
+                include_deletes=req.include_deletes,
+            )
         return result.to_dict()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Error de AWS: {exc}") from exc
@@ -275,21 +292,41 @@ def api_params_apply(req: ApplyParamsRequest):
         raise HTTPException(status_code=400, detail="env_a y env_b deben ser distintos")
     if req.service not in ("ssm", "secretsmanager"):
         raise HTTPException(status_code=400, detail="service debe ser 'ssm' o 'secretsmanager'")
+    if req.with_secret and req.service != "ssm":
+        raise HTTPException(
+            status_code=400,
+            detail="El modo 'es un secreto' aplica solo cuando el servicio es SSM.",
+        )
 
     cfg_a = _env_cfg(req.env_a)
     _env_cfg(req.env_b)
 
-    script = (
-        p.build_ssm_script(req.name, req.new_value, req.value_type, cfg_a)
-        if req.service == "ssm"
-        else p.build_secret_script(req.name, req.new_value, cfg_a)
-    )
+    if req.with_secret:
+        steps = []
+        if req.write_secret:
+            steps.append(
+                {"step": "secreto", "command": p.build_secret_script(req.name, req.new_secret_value, cfg_a)}
+            )
+        if req.write_param:
+            steps.append(
+                {"step": "parámetro", "command": p.build_ssm_script(req.name, req.new_value, req.value_type, cfg_a)}
+            )
+        script = "\n\n".join(st["command"] for st in steps)
+    else:
+        script = (
+            p.build_ssm_script(req.name, req.new_value, req.value_type, cfg_a)
+            if req.service == "ssm"
+            else p.build_secret_script(req.name, req.new_value, cfg_a)
+        )
+        steps = [{"step": "update", "command": script}]
+
     return {
         "env_a": req.env_a,
         "env_b": req.env_b,
         "service": req.service,
         "name": req.name,
         "script": script,
+        "steps": steps,
     }
 
 
@@ -303,11 +340,48 @@ def api_params_apply_execute(req: ExecuteParamsRequest):
         raise HTTPException(status_code=400, detail="op debe ser 'update' o 'delete'")
     if not req.confirm:
         raise HTTPException(status_code=400, detail="Se requiere confirmación explícita para ejecutar.")
+    if req.with_secret and req.service != "ssm":
+        raise HTTPException(
+            status_code=400,
+            detail="El modo 'es un secreto' aplica solo cuando el servicio es SSM.",
+        )
+    if req.with_secret and req.op == "delete":
+        raise HTTPException(
+            status_code=400,
+            detail="El modo 'es un secreto' no admite eliminaciones.",
+        )
 
     cfg_a = _env_cfg(req.env_a)
     _env_cfg(req.env_b)
 
     try:
+        if req.with_secret:
+            step_results = []
+            if req.write_secret:
+                # El secreto SIEMPRE primero: si falla, no se toca el parámetro.
+                step_results.append(
+                    {
+                        "step": "secreto",
+                        "message": p.update_secret(cfg_a, req.name, req.new_secret_value)["message"],
+                    }
+                )
+            if req.write_param:
+                step_results.append(
+                    {
+                        "step": "parámetro",
+                        "message": p.put_parameter(cfg_a, req.name, req.new_value, req.value_type)["message"],
+                    }
+                )
+            return {
+                "ok": True,
+                "message": " · ".join(st["message"] for st in step_results),
+                "env_a": req.env_a,
+                "env_b": req.env_b,
+                "service": req.service,
+                "op": req.op,
+                "name": req.name,
+                "steps": step_results,
+            }
         if req.service == "ssm":
             result = (
                 p.put_parameter(cfg_a, req.name, req.new_value, req.value_type)

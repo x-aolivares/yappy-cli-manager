@@ -1,7 +1,15 @@
 const envA = document.getElementById("env-a");
 const envB = document.getElementById("env-b");
+const serviceSel = document.getElementById("service");
+const secretWrap = document.getElementById("secret-wrap");
 const compareBtn = document.getElementById("compare-btn");
 const result = document.getElementById("result");
+
+function syncSecretOption() {
+  secretWrap.hidden = serviceSel.value !== "ssm";
+}
+serviceSel.addEventListener("change", syncSecretOption);
+syncSecretOption();
 
 loadEnvs(envB, envA).catch((e) => {
   result.innerHTML = renderError("No se pudieron cargar los ambientes: " + e.message);
@@ -12,6 +20,7 @@ loadEnvs(envB, envA).catch((e) => {
 let data = null;
 let rows = [];
 let isJSON = false;
+let pairState = null; // { param: {text, include}, secret: {text, include} }
 let scriptText = "";
 let applyTimer = null;
 let applySeq = 0;
@@ -216,6 +225,198 @@ function makeExecuteBtn(op, getValue) {
   return btn;
 }
 
+/* --- "Es un secreto" pair mode (SSM parameter + paired secret) --- */
+
+function buildPairPreview() {
+  const parts = [];
+  if (pairState.secret.include)
+    parts.push(`Secreto resultante (Secrets Manager):\n${pairState.secret.text}`);
+  if (pairState.param.include)
+    parts.push(`Parámetro resultante (SSM):\n${pairState.param.text}`);
+  return parts.join("\n\n");
+}
+
+function refreshPairScript() {
+  const seq = ++applySeq;
+  const pre = document.getElementById("script-pre");
+  fetch("/api/params/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      env_a: data.env_a,
+      env_b: data.env_b,
+      service: data.service,
+      name: data.name,
+      with_secret: true,
+      write_secret: pairState.secret.include,
+      write_param: pairState.param.include,
+      new_value: pairState.param.include ? pairState.param.text : (data.value_a ?? ""),
+      value_type: data.value_type_b || "String",
+      new_secret_value: pairState.secret.include ? pairState.secret.text : (data.secret_value_a ?? ""),
+    }),
+  })
+    .then(async (res) => {
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
+      return body;
+    })
+    .then((body) => {
+      if (seq !== applySeq) return;
+      scriptText = body.script;
+      if (pre) pre.textContent = scriptText;
+    })
+    .catch((e) => {
+      if (seq !== applySeq) return;
+      scriptText = "";
+      if (pre) pre.textContent = "No se pudo generar el comando: " + e.message;
+    });
+}
+
+function pairOnEdit() {
+  const preview = document.getElementById("preview-pre");
+  if (preview) preview.textContent = buildPairPreview();
+  clearTimeout(applyTimer);
+  applyTimer = setTimeout(refreshPairScript, 350);
+}
+
+function buildStepRows() {
+  const defs = [
+    { key: "secret", label: "Secreto (Secrets Manager)", current: data.secret_value_a ?? "", status: data.secret_status },
+    { key: "param", label: "Parámetro (SSM)", current: data.value_a ?? "", status: data.param_status },
+  ];
+  return defs
+    .filter((d) => (d.key === "secret" ? data.secret_needs_write : data.param_needs_write))
+    .map((d) => {
+      const op = d.status === "missing_in_a" ? "crear" : "actualizar";
+      const badge = `<span class="badge ${d.status === "missing_in_a" ? "missing_in_a" : "different"}">${op}</span>`;
+      return `<tr>
+        <td><input type="checkbox" class="pair-include" data-pair="${d.key}" checked></td>
+        <td><code>${escapeHtml(d.label)}</code></td>
+        <td>${badge}</td>
+        <td>${formatValue(d.current || null)}</td>
+        <td><textarea class="change-input pair-input" data-pair="${d.key}" rows="1" spellcheck="false">${escapeHtml(pairState[d.key].text)}</textarea></td>
+      </tr>`;
+    })
+    .join("");
+}
+
+function makePairExecuteBtn() {
+  const btn = document.createElement("button");
+  btn.className = "primary";
+  btn.textContent = `Ejecutar en ${data.env_a}`;
+  btn.addEventListener("click", async () => {
+    const stepsMsg = [
+      pairState.secret.include ? "Paso 1 — actualizar el SECRETO en Secrets Manager" : "",
+      pairState.param.include ? "Paso 2 — actualizar el PARÁMETRO en SSM" : "",
+    ].filter(Boolean).join("\n");
+    const msg =
+      `¿Sincronizar ${data.name} en ${data.env_a}?\n${stepsMsg}\n\n` +
+      "Se ejecutan en ese orden: nunca en una sola operación.";
+    if (!confirm(msg)) return;
+    const exec = document.getElementById("exec-result");
+    if (exec) exec.innerHTML = '<div class="note">Ejecutando…</div>';
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/params/apply-execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          env_a: data.env_a,
+          env_b: data.env_b,
+          service: data.service,
+          op: "update",
+          name: data.name,
+          with_secret: true,
+          write_secret: pairState.secret.include,
+          write_param: pairState.param.include,
+          new_value: pairState.param.include ? pairState.param.text : (data.value_a ?? ""),
+          value_type: data.value_type_b || "String",
+          new_secret_value: pairState.secret.include ? pairState.secret.text : (data.secret_value_a ?? ""),
+          confirm: true,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
+      const lines = (body.steps || [])
+        .map((s) => `✓ ${escapeHtml(s.message)}`)
+        .join("<br>");
+      if (exec) exec.innerHTML = `<div class="note ok">${lines}</div>`;
+      setTimeout(() => compareBtn.click(), 700);
+    } catch (e) {
+      if (exec) exec.innerHTML = `<div class="note err">✗ ${escapeHtml(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  return btn;
+}
+
+function renderPair(parts) {
+  const showA = data.value_a ?? "";
+  const showB = data.value_b ?? "";
+  parts.push(
+    `<div class="columns">
+       <div class="panel">
+         <div class="section-title"><strong>Región de Origen — ${escapeHtml(data.env_b)}</strong></div>
+         <div class="muted" style="font-size:12px;">Parámetro</div>
+         ${preBlock(showB, "No existe")}
+         <div class="muted" style="font-size:12px; margin-top:8px;">Secreto</div>
+         ${preBlock(data.secret_value_b ?? "", "No existe")}
+       </div>
+       <div class="panel">
+         <div class="section-title"><strong>Región Destino — ${escapeHtml(data.env_a)}</strong></div>
+         <div class="muted" style="font-size:12px;">Parámetro</div>
+         ${preBlock(showA, "No existe")}
+         <div class="muted" style="font-size:12px; margin-top:8px;">Secreto</div>
+         ${preBlock(data.secret_value_a ?? "", "No existe")}
+       </div>
+     </div>`,
+  );
+
+  if (!data.param_needs_write && !data.secret_needs_write) return;
+
+  parts.push(
+    `<div class="panel">
+       <div class="section-title">
+         <strong>Cambios</strong>
+         <span class="muted">(se actualiza primero el secreto, luego el parámetro — nunca en una sola operación)</span>
+       </div>
+       <table>
+         <thead><tr><th></th><th>Recurso</th><th>Operación</th><th>Valor actual en la región destino</th><th>Valor a aplicar</th></tr></thead>
+         <tbody>${buildStepRows()}</tbody>
+       </table>
+     </div>
+     <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; margin-top:14px;">
+       <div class="panel">
+         <div class="section-title"><strong>Valores resultantes hacia la región destino (${escapeHtml(data.env_a)})</strong></div>
+         <pre id="preview-pre" class="script-block"></pre>
+         <div class="actions" style="margin-top:10px;"><span id="preview-actions"></span></div>
+       </div>
+       <div class="panel script-block">
+         <div class="section-title"><strong>Comandos de actualización (orden: secreto → parámetro)</strong></div>
+         <pre id="script-pre" class="script-block">Regenerando…</pre>
+         <div class="actions" style="margin-top:10px;"><span id="script-actions"></span><span id="exec-actions"></span></div>
+         <div id="exec-result"></div>
+       </div>
+     </div>`,
+  );
+}
+
+function attachPairHandlers() {
+  document.querySelectorAll(".pair-include").forEach((cb) =>
+    cb.addEventListener("change", () => {
+      pairState[cb.dataset.pair].include = cb.checked;
+      pairOnEdit();
+    }),
+  );
+  document.querySelectorAll(".pair-input").forEach((ta) =>
+    ta.addEventListener("input", () => {
+      pairState[ta.dataset.pair].text = ta.value;
+      pairOnEdit();
+    }),
+  );
+}
+
 /* --- Rendering --- */
 
 function render(payload) {
@@ -236,6 +437,25 @@ function render(payload) {
         : "") +
       `</div>`,
   );
+
+  if (data.pair) {
+    pairState = {
+      param: { text: data.param_apply ?? "", include: !!data.param_needs_write },
+      secret: { text: data.secret_apply ?? "", include: !!data.secret_needs_write },
+    };
+    renderPair(parts);
+    result.innerHTML = parts.join("");
+    if (data.param_needs_write || data.secret_needs_write) {
+      pairOnEdit();
+      const wrap = document.getElementById("script-actions");
+      if (wrap) wrap.appendChild(makeCopyBtn());
+      const pwrap = document.getElementById("preview-actions");
+      if (pwrap) pwrap.appendChild(makePreviewCopyBtn());
+      const ewrap = document.getElementById("exec-actions");
+      if (ewrap) ewrap.appendChild(makePairExecuteBtn());
+    }
+    return;
+  }
 
   if (data.status === "equal" || data.status === "none") {
     result.innerHTML = parts.join("");
@@ -440,6 +660,7 @@ compareBtn.addEventListener("click", async () => {
     service: document.getElementById("service").value,
     name: document.getElementById("name").value.trim(),
     include_deletes: document.getElementById("include-deletes").checked,
+    with_secret: document.getElementById("with-secret").checked,
   };
 
   if (!payload.env_a || !payload.env_b) {

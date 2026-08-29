@@ -317,6 +317,19 @@ class ParamDiffResult:
     patch_value: str | None = None
     script: str | None = None
     notes: list = field(default_factory=list)
+    # Secret-pair mode (SSM parameter + paired Secrets Manager secret).
+    pair: bool = False
+    secret_value_a: str | None = None
+    secret_value_b: str | None = None
+    secret_changes: list = field(default_factory=list)
+    secret_patch_value: str | None = None
+    param_apply: str | None = None
+    secret_apply: str | None = None
+    param_status: str = ""  # none | missing_in_a | missing_in_b | equal | different
+    secret_status: str = ""
+    param_needs_write: bool = False
+    secret_needs_write: bool = False
+    steps: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -334,6 +347,18 @@ class ParamDiffResult:
             "patch_value": self.patch_value,
             "script": self.script,
             "notes": self.notes,
+            "pair": self.pair,
+            "secret_value_a": self.secret_value_a,
+            "secret_value_b": self.secret_value_b,
+            "secret_changes": self.secret_changes,
+            "secret_patch_value": self.secret_patch_value,
+            "param_apply": self.param_apply,
+            "secret_apply": self.secret_apply,
+            "param_status": self.param_status,
+            "secret_status": self.secret_status,
+            "param_needs_write": self.param_needs_write,
+            "secret_needs_write": self.secret_needs_write,
+            "steps": self.steps,
         }
 
 
@@ -444,6 +469,143 @@ def diff_params(
         patch_value=patch_value,
         script=_build_script(service, name, new_value, type_b, cfg_a),
         notes=[f"Hay cambios de {env_b} (origen) → {env_a} (destino)."],
+    )
+
+
+def diff_params_pair(
+    cfg_a,
+    cfg_b,
+    name: str,
+    env_a: str,
+    env_b: str,
+) -> ParamDiffResult:
+    """Compare an SSM parameter AND its paired same-name secret between regions.
+
+    Some parameters back their value with a secret of the same name in
+    Secrets Manager (``value`` = identifier/alias, ``secret-value`` = the real
+    secret material). Both resources are read independently and compared;
+    writes are ALWAYS ordered secret → parameter, never in a single combined
+    operation.
+    """
+    def safe_read(reader, cfg):
+        try:
+            return reader(cfg, name)
+        except ParamNotFound:
+            return None
+
+    def where(x_a, x_b):
+        if x_a is not None and x_b is not None:
+            return "both"
+        if x_a is not None:
+            return "a"
+        if x_b is not None:
+            return "b"
+        return "none"
+
+    def cmp(a, b):
+        if a is not None and b is not None:
+            return compare_values(a, b)
+        return "none", False, [], None
+
+    pa = safe_read(read_parameter, cfg_a)
+    pb = safe_read(read_parameter, cfg_b)
+    sa = safe_read(read_secret, cfg_a)
+    sb = safe_read(read_secret, cfg_b)
+
+    param_a = pa[0] if pa else None
+    param_b = pb[0] if pb else None
+    type_a = pa[1] if pa else None
+    type_b = pb[1] if pb else None
+
+    param_where = where(param_a, param_b)
+    secret_where = where(sa, sb)
+
+    p_status, p_is_json, p_changes, p_patch = cmp(param_a, param_b)
+    s_status, s_is_json, s_changes, s_patch = cmp(sa, sb)
+
+    def _side_state(v_a, v_b, status):
+        if v_a is None:
+            return "missing_in_a" if v_b is not None else "none"
+        if v_b is None:
+            return "missing_in_b"
+        return "different" if status == "different" else "equal"
+
+    param_status = _side_state(param_a, param_b, p_status)
+    secret_status = _side_state(sa, sb, s_status)
+
+    param_needs_write = param_status in ("different", "missing_in_a")
+    secret_needs_write = secret_status in ("different", "missing_in_a")
+
+    param_apply = (
+        (p_patch if p_is_json and p_status == "different" else param_b)
+        if param_status in ("different", "missing_in_a")
+        else None
+    )
+    secret_apply = (
+        (s_patch if s_is_json and s_status == "different" else sb)
+        if secret_status in ("different", "missing_in_a")
+        else None
+    )
+
+    if param_where == "none" and secret_where == "none":
+        return ParamDiffResult(
+            env_a=env_a, env_b=env_b, service="ssm", name=name,
+            status="none", pair=True,
+            param_status=param_status, secret_status=secret_status,
+            notes=["No existe el parámetro ni el secreto en ninguna de las dos regiones."],
+        )
+
+    missing = [w for w in ("parametro", "secreto")
+               if (param_status if w == "parametro" else secret_status) == "missing_in_a"]
+    if missing:
+        status = "missing_in_a"
+        notes = [
+            f"En {env_a} (destino) falta crear: {', '.join(missing)} — "
+            f"se crean desde {env_b} (origen)."
+        ]
+    elif param_needs_write or secret_needs_write:
+        status = "different"
+        notes = [
+            f"Hay cambios de {env_b} (origen) → {env_a} (destino). "
+            "Se actualiza primero el secreto y luego el parámetro."
+        ]
+    elif "missing_in_b" in (param_status, secret_status):
+        status = "missing_in_b"
+        stray = [w for w in ("parametro", "secreto")
+                 if (param_status if w == "parametro" else secret_status) == "missing_in_b"]
+        notes = [
+            f"En {env_b} (origen) no existen: {', '.join(stray)}. "
+            "No hay nada que sincronizar (origen → destino); no se elimina nada en este modo."
+        ]
+    else:
+        status = "equal"
+        notes = ["No hay cambios."]
+
+    steps = []
+    if secret_needs_write:
+        steps.append({"step": "secreto", "command": build_secret_script(name, secret_apply or "", cfg_a)})
+    if param_needs_write:
+        steps.append({"step": "parámetro", "command": build_ssm_script(name, param_apply or "", type_b or type_a or "String", cfg_a)})
+
+    return ParamDiffResult(
+        env_a=env_a, env_b=env_b, service="ssm", name=name,
+        status=status,
+        value_a=param_a, value_b=param_b,
+        value_type_a=type_a, value_type_b=type_b or type_a,
+        is_json=bool(p_is_json),
+        changes=p_changes,
+        patch_value=p_patch,
+        script="\n\n".join(st["command"] for st in steps) or None,
+        notes=notes,
+        pair=True,
+        secret_value_a=sa, secret_value_b=sb,
+        secret_changes=s_changes,
+        secret_patch_value=s_patch,
+        param_apply=param_apply, secret_apply=secret_apply,
+        param_status=param_status, secret_status=secret_status,
+        param_needs_write=param_needs_write,
+        secret_needs_write=secret_needs_write,
+        steps=steps,
     )
 
 # --- Batch reader (web "Leer Parámetros" section) -------------------------
