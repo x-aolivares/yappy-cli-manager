@@ -1,10 +1,20 @@
 const nameInput = document.getElementById("name");
 const valueInput = document.getElementById("value");
 const typeSel = document.getElementById("value-type");
+const secretChk = document.getElementById("create-secret");
 const envsWrap = document.getElementById("envs");
 const previewBtn = document.getElementById("preview-btn");
 const createBtn = document.getElementById("create-btn");
 const result = document.getElementById("result");
+
+function withSecret() {
+  return secretChk.checked;
+}
+
+secretChk.addEventListener("change", () => {
+  typeSel.disabled = withSecret();
+  if (withSecret()) typeSel.value = "SecureString";
+});
 
 async function loadEnvChecks() {
   const res = await fetch("/api/envs");
@@ -37,6 +47,7 @@ function payload(dryRun) {
     value: valueInput.value,
     value_type: typeSel.value,
     envs: selectedEnvs(),
+    create_secret: withSecret(),
     dry_run: dryRun,
     confirm: !dryRun,
   };
@@ -57,12 +68,15 @@ function validate() {
 
 function render(results, dryRun) {
   const { name, ok_count, err_count } = { name: payload(true).name, ok_count: results.filter((r) => r.ok).length, err_count: results.filter((r) => !r.ok).length };
+  const secret = withSecret();
   const total = results.length;
   const banner =
     err_count === 0
       ? `<div class="ok-box"><strong>Listo.</strong> ${ok_count} región${
           ok_count === 1 ? "" : "es"
-        }${dryRun ? " con comando generado" : ""} para ${escapeHtml(name)}.</div>`
+        }${dryRun ? " con comando generado" : ""} para ${escapeHtml(name)}${
+          secret ? " (secreto + parámetro SSM)" : ""
+        }.</div>`
       : `<div class="error-box"><strong>${err_count} región${
           err_count === 1 ? "" : "es"
         } con error</strong> de ${total} para ${escapeHtml(name)}.</div>`;
@@ -111,8 +125,12 @@ async function run(dryRun) {
   const check = validate();
   if (!check) return;
   if (!dryRun) {
+    const secret = withSecret();
+    const ops = secret
+      ? "crear/actualizar el secreto en Secrets Manager Y el parámetro SSM (SecureString)"
+      : "ejecutar put-parameter";
     const ok = confirm(
-      `¿Ejecutar put-parameter de ${check.name} en: ${check.envs.join(", ")}?\n` +
+      `¿${ops} de ${check.name} en: ${check.envs.join(", ")}?\n` +
         "Cada región usa su profile/región configurados.",
     );
     if (!ok) return;

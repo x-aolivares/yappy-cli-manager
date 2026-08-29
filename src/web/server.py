@@ -91,6 +91,7 @@ class CreateMultiParamsRequest(BaseModel):
     value: str = ""
     value_type: str = "String"
     envs: list[str] = []
+    create_secret: bool = False
     dry_run: bool = False
     confirm: bool = False
 
@@ -346,6 +347,9 @@ def api_params_multi(req: CreateMultiParamsRequest):
     if not req.dry_run and not req.confirm:
         raise HTTPException(status_code=400, detail="Se requiere confirmación explícita para ejecutar.")
 
+    # Modo secreto: el parámetro se escribe siempre como SecureString.
+    value_type = "SecureString" if req.create_secret else req.value_type
+
     results = []
     for env in req.envs:
         try:
@@ -355,24 +359,39 @@ def api_params_multi(req: CreateMultiParamsRequest):
             continue
         try:
             if req.dry_run:
-                results.append(
-                    {
-                        "env": env,
-                        "ok": True,
-                        "script": p.build_ssm_script(
-                            req.name, req.value, req.value_type, cfg
-                        ),
-                    }
-                )
+                scripts = [p.build_ssm_script(req.name, req.value, value_type, cfg)]
+                if req.create_secret:
+                    scripts.insert(0, p.build_secret_script(req.name, req.value, cfg))
+                results.append({"env": env, "ok": True, "script": "\n\n".join(scripts)})
             else:
-                r = p.put_parameter(cfg, req.name, req.value, req.value_type)
-                results.append({"env": env, "ok": True, "message": r["message"]})
+                errors = []
+                messages = []
+                if req.create_secret:
+                    try:
+                        messages.append(p.update_secret(cfg, req.name, req.value)["message"])
+                    except Exception as exc:
+                        errors.append(f"secreto: {exc}")
+                try:
+                    messages.append(
+                        p.put_parameter(cfg, req.name, req.value, value_type)["message"]
+                    )
+                except Exception as exc:
+                    errors.append(f"parámetro: {exc}")
+                if errors:
+                    results.append(
+                        {"env": env, "ok": False, "error": " | ".join(errors)}
+                    )
+                else:
+                    results.append(
+                        {"env": env, "ok": True, "message": " ".join(messages)}
+                    )
         except Exception as exc:
             results.append({"env": env, "ok": False, "error": f"Error de ejecución: {exc}"})
 
     return {
         "name": req.name,
-        "value_type": req.value_type,
+        "value_type": value_type,
+        "create_secret": req.create_secret,
         "dry_run": req.dry_run,
         "results": results,
         "ok_count": sum(1 for r in results if r["ok"]),

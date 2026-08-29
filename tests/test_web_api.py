@@ -355,6 +355,97 @@ def test_api_params_multi_execute_per_env_keeps_errors_isolated(monkeypatch):
     assert payload["err_count"] == 1
 
 
+def test_api_params_multi_with_secret_dry_run_builds_both_scripts(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    captured = {}
+    monkeypatch.setattr(
+        p, "build_ssm_script",
+        lambda name, value, value_type, cfg: captured.update(
+            ssm=(name, value, value_type, cfg._env)
+        ) or f"ssm {cfg._env}",
+    )
+    monkeypatch.setattr(
+        p, "build_secret_script",
+        lambda name, value, cfg: captured.update(
+            secret=(name, value, cfg._env)
+        ) or f"secret {cfg._env}",
+    )
+
+    payload = api_params_multi(
+        CreateMultiParamsRequest(
+            name="/s", value="hunter2", create_secret=True,
+            envs=["dev"], dry_run=True,
+        )
+    )
+
+    assert captured["secret"] == ("/s", "hunter2", "dev")
+    assert captured["ssm"][0:2] == ("/s", "hunter2")
+    assert captured["ssm"][2] == "SecureString"
+    script = payload["results"][0]["script"]
+    assert "secret dev" in script and "ssm dev" in script
+    assert payload["value_type"] == "SecureString"
+
+
+def test_api_params_multi_with_secret_executes_secret_then_param(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    calls = []
+    monkeypatch.setattr(
+        p, "update_secret",
+        lambda cfg, name, value: calls.append(("secret", cfg._env)) or {"ok": True, "message": "secret ok"},
+    )
+    monkeypatch.setattr(
+        p, "put_parameter",
+        lambda cfg, name, value, value_type: calls.append(("ssm", value_type, cfg._env)) or {"ok": True, "message": "ssm ok"},
+    )
+
+    payload = api_params_multi(
+        CreateMultiParamsRequest(
+            name="/s", value="hunter2", create_secret=True,
+            envs=["dev"], confirm=True,
+        )
+    )
+
+    assert calls == [("secret", "dev"), ("ssm", "SecureString", "dev")]
+    assert payload["ok_count"] == 1
+    assert "secret ok" in payload["results"][0]["message"]
+
+
+def test_api_params_multi_with_secret_partial_failure_flagged(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    monkeypatch.setattr(
+        p, "update_secret",
+        lambda cfg, name, value: (_ for _ in ()).throw(RuntimeError("no permission")),
+    )
+    monkeypatch.setattr(
+        p, "put_parameter",
+        lambda cfg, name, value, value_type: {"ok": True, "message": "ssm ok"},
+    )
+
+    payload = api_params_multi(
+        CreateMultiParamsRequest(
+            name="/s", value="hunter2", create_secret=True,
+            envs=["dev"], confirm=True,
+        )
+    )
+
+    row = payload["results"][0]
+    assert row["ok"] is False
+    assert "secreto: " in row["error"]
+    assert "no permission" in row["error"]
+
+
 def test_api_params_multi_empty_envs_returns_400(monkeypatch):
     monkeypatch.setattr(
         Config, "known_environments", classmethod(lambda cls: ["dev"])
