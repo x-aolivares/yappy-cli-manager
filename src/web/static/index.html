@@ -18,6 +18,7 @@
       <a href="/params-diff">Parámetros</a>
       <a href="/params-read">Leer Parámetros</a>
       <a href="/params-create">Crear Parámetro</a>
+      <a href="/params-edit">Editar Parámetro</a>
       <a href="/compile">Compilar</a>
     </nav>
   </header>
@@ -59,6 +60,13 @@
           Un valor, varias regiones: parámetro SSM o, marcando la opción, también secreto en
           Secrets Manager con el parámetro duplicado como <code>SecureString</code>. Genera los
           comandos por región o ejecútalos con tu confirmación.
+        </p>
+      </a>
+      <a class="card" href="/params-edit">
+        <h2>Editar un parámetro</h2>
+        <p>
+          Elegís el ambiente y ves el valor actual de un parámetro (con decodificación de
+          <code>SecureString</code>), lo editás y lo guardás con tu confirmación.
         </p>
       </a>
       <a class="card" href="/compile">

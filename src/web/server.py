@@ -38,6 +38,7 @@ _PAGES = {
     "/params-diff": "params-diff.html",
     "/params-read": "params-read.html",
     "/params-create": "params-create.html",
+    "/params-edit": "params-edit.html",
     "/compile": "compile.html",
 }
 
@@ -397,6 +398,22 @@ def api_params_multi(req: CreateMultiParamsRequest):
         "ok_count": sum(1 for r in results if r["ok"]),
         "err_count": sum(1 for r in results if not r["ok"]),
     }
+
+
+@app.get("/api/params/get")
+def api_params_get(env: str, name: str):
+    cfg = _env_cfg(env)
+    if not name or not name.strip():
+        raise HTTPException(status_code=400, detail="Ingresá el nombre del parámetro.")
+    try:
+        value, type_ = p.read_parameter(cfg, name)
+    except p.ParamNotFound as exc:
+        raise HTTPException(
+            status_code=404, detail=f"No existe el parámetro '{name}' en {env}."
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Error de AWS: {exc}") from exc
+    return {"env": env, "name": name, "value": value, "value_type": type_}
 
 
 @app.post("/api/params/read")

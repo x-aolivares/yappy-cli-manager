@@ -10,6 +10,7 @@ from src.web.server import (
     api_params_apply,
     api_params_apply_execute,
     api_params_diff,
+    api_params_get,
     api_params_multi,
     api_params_read,
     ApplyParamsRequest,
@@ -444,6 +445,41 @@ def test_api_params_multi_with_secret_partial_failure_flagged(monkeypatch):
     assert row["ok"] is False
     assert "secreto: " in row["error"]
     assert "no permission" in row["error"]
+
+
+def test_api_params_get_reads_value_and_type(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    calls = []
+    monkeypatch.setattr(
+        p, "read_parameter",
+        lambda cfg, name: calls.append((cfg._env, name)) or (('{"rate": 20}', "SecureString")),
+    )
+
+    payload = api_params_get(env="dev", name="/x")
+    assert calls == [("dev", "/x")]
+    assert payload["value"] == '{"rate": 20}'
+    assert payload["value_type"] == "SecureString"
+
+
+def test_api_params_get_missing_parameter_returns_404(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    def raise_not_found(cfg, name):
+        raise p.ParamNotFound(name)
+
+    monkeypatch.setattr(p, "read_parameter", raise_not_found)
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_params_get(env="dev", name="/missing")
+    assert exc_info.value.status_code == 404
+    assert "/missing" in str(exc_info.value.detail)
 
 
 def test_api_params_multi_empty_envs_returns_400(monkeypatch):
