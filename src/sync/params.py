@@ -23,10 +23,19 @@ def _boto_session(profile: str, region: str):
     return boto3.session.Session(profile_name=profile, region_name=region)
 
 
+def _boto_client(service: str, cfg):
+    session = _boto_session(cfg.profile, cfg.region)
+    endpoint = getattr(cfg, "endpoint_url", None)
+    if endpoint is None and cfg.profile == "localstack":
+        endpoint = "http://localhost:4566"
+    if endpoint:
+        return session.client(service, endpoint_url=endpoint)
+    return session.client(service)
+
+
 def read_parameter(cfg, name: str) -> tuple[str, str]:
     """Return ``(value, type)`` of an SSM parameter, or raise ParamNotFound."""
-    session = _boto_session(cfg.profile, cfg.region)
-    client = session.client("ssm")
+    client = _boto_client("ssm", cfg)
     try:
         resp = client.get_parameter(Name=name, WithDecryption=True)
     except client.exceptions.ParameterNotFound as exc:
@@ -36,8 +45,7 @@ def read_parameter(cfg, name: str) -> tuple[str, str]:
 
 def read_secret(cfg, name: str) -> str:
     """Return the string value of a Secrets Manager secret, or raise ParamNotFound."""
-    session = _boto_session(cfg.profile, cfg.region)
-    client = session.client("secretsmanager")
+    client = _boto_client("secretsmanager", cfg)
     try:
         resp = client.get_secret_value(SecretId=name)
     except client.exceptions.ResourceNotFoundException as exc:
@@ -101,8 +109,7 @@ def build_secret_delete_script(name: str, cfg) -> str:
 
 def put_parameter(cfg, name: str, value: str, value_type: str = "String") -> dict:
     """Overwrite/create an SSM parameter on the target region."""
-    session = _boto_session(cfg.profile, cfg.region)
-    client = session.client("ssm")
+    client = _boto_client("ssm", cfg)
     vtype = value_type or "String"
     try:
         resp = client.put_parameter(
@@ -126,8 +133,7 @@ def put_parameter(cfg, name: str, value: str, value_type: str = "String") -> dic
 
 def update_secret(cfg, name: str, value: str) -> dict:
     """Update a Secrets Manager secret; create it first if it does not exist."""
-    session = _boto_session(cfg.profile, cfg.region)
-    client = session.client("secretsmanager")
+    client = _boto_client("secretsmanager", cfg)
     try:
         client.update_secret(SecretId=name, SecretString=value)
     except client.exceptions.ResourceNotFoundException:
@@ -140,16 +146,14 @@ def update_secret(cfg, name: str, value: str) -> dict:
 
 def delete_parameter(cfg, name: str) -> dict:
     """Permanently delete an SSM parameter on the target region."""
-    session = _boto_session(cfg.profile, cfg.region)
-    client = session.client("ssm")
+    client = _boto_client("ssm", cfg)
     client.delete_parameter(Name=name)
     return {"ok": True, "message": f"Parámetro '{name}' eliminado en {cfg.region}."}
 
 
 def delete_secret(cfg, name: str) -> dict:
     """Permanently delete a Secrets Manager secret (no recovery)."""
-    session = _boto_session(cfg.profile, cfg.region)
-    client = session.client("secretsmanager")
+    client = _boto_client("secretsmanager", cfg)
     client.delete_secret(SecretId=name, ForceDeleteWithoutRecovery=True)
     return {"ok": True, "message": f"Secreto '{name}' eliminado en {cfg.region}."}
 
@@ -662,8 +666,7 @@ def read_many(cfg, entries) -> list[dict]:
     norms = _normalize_entries(entries)
 
     needs_ssm = any(not n["is_secret"] for n in norms)
-    session = _boto_session(cfg.profile, cfg.region)
-    ssm = session.client("ssm") if needs_ssm else None
+    ssm = _boto_client("ssm", cfg) if needs_ssm else None
 
     ssm_names = [n["name"] for n in norms if not n["is_secret"]]
     found_ssm: dict[str, tuple[str, str]] = {}
@@ -701,7 +704,7 @@ def read_many(cfg, entries) -> list[dict]:
 
     sm_pending = secret_pending + auto_pending
     if sm_pending:
-        sms = session.client("secretsmanager")
+        sms = _boto_client("secretsmanager", cfg)
 
         def _read_secret(name: str) -> tuple[str | None, str | None]:
             try:

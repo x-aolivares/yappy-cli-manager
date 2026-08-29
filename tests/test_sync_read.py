@@ -78,6 +78,7 @@ def _monkey_session(monkeypatch, conn):
 class _CFG:
     profile = "prof-dev"
     region = "us-east-1"
+    endpoint_url = None
 
 
 def _cfg():

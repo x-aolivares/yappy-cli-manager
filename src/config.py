@@ -143,6 +143,10 @@ class Config:
         return self.get("AWS_REGION", "us-west-2")
 
     @property
+    def endpoint_url(self) -> str | None:
+        return self.get("AWS_ENDPOINT_URL")
+
+    @property
     def instance(self) -> str | None:
         return self.get("AWS_INSTANCE")
 
