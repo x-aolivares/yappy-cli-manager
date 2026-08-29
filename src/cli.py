@@ -119,16 +119,59 @@ def web(
     no_browser: bool = typer.Option(
         False, "--no-browser", help="No abrir el navegador automáticamente"
     ),
-    build: bool = typer.Option(
-        False, "--build", help="Compilar el frontend Angular antes de servir"
+    build: bool | None = typer.Option(
+        None,
+        "--build/--no-build",
+        help="Compilar el frontend Angular. Por defecto se compila "
+        "solo si falta dist/browser o el código está desactualizado.",
     ),
 ):
     """Abrir la web de Region Sync (diff de DB y de parámetros/secretos entre ambientes)."""
-    if build:
+    if build or (build is None and _frontend_needs_build()):
         _build_web_frontend()
     from .web.run import run
 
     run(port=port, open_browser=not no_browser)
+
+
+def _frontend_needs_build(frontend: Path | None = None) -> bool:
+    """True si el frontend dist/browser falta o sus fuentes son más nuevas."""
+    import shutil
+
+    frontend = frontend or (Path(__file__).resolve().parent.parent / "frontend")
+    if not (frontend / "package.json").exists():
+        return False
+    index = frontend / "dist" / "browser" / "index.html"
+    if not index.exists():
+        return True
+    if not shutil.which("npm"):
+        return False
+    source_files: list[Path] = [
+        frontend / "package.json",
+        frontend / "angular.json",
+        frontend / "package-lock.json",
+        frontend / "node_modules" / ".package-lock.json",
+    ]
+    for cfg in frontend.glob("tsconfig*.json"):
+        source_files.append(cfg)
+    src = frontend / "src"
+    if src.exists():
+        source_files.append(src)
+    newest = 0.0
+    for source in source_files:
+        if not source.exists():
+            continue
+        try:
+            if source.is_dir():
+                newest = max(
+                    newest,
+                    max(p.stat().st_mtime for p in source.rglob("*") if p.is_file()),
+                )
+            else:
+                newest = max(newest, source.stat().st_mtime)
+        except OSError:
+            continue
+    return newest > index.stat().st_mtime
 
 
 def _build_web_frontend() -> None:
