@@ -1,0 +1,56 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+header .brand {
+  font-family: 'ValdemaMedium', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 22px;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+header .brand span {
+  color: var(--yappy-org);
+}
+
+header nav {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+header nav a {
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 14px;
+
+  &:hover {
+    color: var(--text);
+    background: var(--panel);
+    text-decoration: none;
+  }
+
+  &.active {
+    color: var(--accent);
+    border-color: var(--border);
+  }
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 28px;
+}

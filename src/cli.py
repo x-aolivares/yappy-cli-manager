@@ -119,11 +119,39 @@ def web(
     no_browser: bool = typer.Option(
         False, "--no-browser", help="No abrir el navegador automáticamente"
     ),
+    build: bool = typer.Option(
+        False, "--build", help="Compilar el frontend Angular antes de servir"
+    ),
 ):
     """Abrir la web de Region Sync (diff de DB y de parámetros/secretos entre ambientes)."""
+    if build:
+        _build_web_frontend()
     from .web.run import run
 
     run(port=port, open_browser=not no_browser)
+
+
+def _build_web_frontend() -> None:
+    """Compile the Angular frontend (frontend/ dist) on demand."""
+    import shutil
+
+    from .logger import info
+
+    frontend = Path(__file__).resolve().parent.parent / "frontend"
+    npm = shutil.which("npm")
+    if not npm:
+        die("npm no está instalado — instalá Node.js (>=24.15) para compilar el frontend")
+    if not (frontend / "package.json").exists():
+        die(f"No se encontró frontend/ en {frontend}")
+    info("Compilando frontend Angular (frontend/ -> dist/browser)...")
+    result = subprocess.run(
+        [npm, "run", "build"],
+        cwd=str(frontend),
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        die(f"Falló el build del frontend:\n{result.stdout}\n{result.stderr}")
+    success("Frontend compilado.")
 
 
 @app.command()

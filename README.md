@@ -155,6 +155,22 @@ yappy edit                           # Abrir proyecto en VS Code
 yappy py-purge                       # Limpiar cache pip
 ```
 
+### Web de Region Sync
+
+```bash
+yappy web --build                    # Compilar el frontend Angular + abrir la web
+yappy web --no-browser               # Servir sin abrir el navegador
+```
+
+La web (diff de DB y de parámetros/secretos entre ambientes) se sirve desde
+`frontend/` (Angular). El frontend **no se commitea compilado**: si no existe
+`frontend/dist/browser`, `yappy web` sirve las páginas legacy sin romper.
+Para compilar el frontend hace falta **Node.js >= 24.15**:
+
+```bash
+cd frontend && npm install && npm run build
+```
+
 ---
 
 ## Nueva sintaxis (Docker-like)
