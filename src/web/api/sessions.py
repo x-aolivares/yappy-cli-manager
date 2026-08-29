@@ -5,12 +5,23 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from .. import sessions as S
-from ..schemas import CreateSessionRequest, UpdateSessionItemRequest
+from ..schemas import (
+    CreateSessionRequest,
+    DeleteResponse,
+    SessionDetailResponse,
+    SessionItemInfo,
+    SessionsListResponse,
+    UpdateSessionItemRequest,
+)
 
-router = APIRouter()
+router = APIRouter(tags=["sessions"])
 
 
-@router.post("/api/sessions")
+@router.post(
+    "/api/sessions",
+    operation_id="create_session",
+    response_model=SessionDetailResponse,
+)
 def api_sessions_create(req: CreateSessionRequest):
     try:
         return S.create_session(
@@ -27,12 +38,20 @@ def api_sessions_create(req: CreateSessionRequest):
         raise HTTPException(status_code=400, detail=f"Error de sesión: {exc}") from exc
 
 
-@router.get("/api/sessions")
+@router.get(
+    "/api/sessions",
+    operation_id="list_sessions",
+    response_model=SessionsListResponse,
+)
 def api_sessions_list():
     return {"sessions": S.list_sessions()}
 
 
-@router.get("/api/sessions/{session_id}")
+@router.get(
+    "/api/sessions/{session_id}",
+    operation_id="get_session",
+    response_model=SessionDetailResponse,
+)
 def api_sessions_get(session_id: str):
     try:
         return S.get_session(session_id)
@@ -40,7 +59,11 @@ def api_sessions_get(session_id: str):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.delete("/api/sessions/{session_id}")
+@router.delete(
+    "/api/sessions/{session_id}",
+    operation_id="delete_session",
+    response_model=DeleteResponse,
+)
 def api_sessions_delete(session_id: str):
     try:
         S.delete_session(session_id)
@@ -49,7 +72,11 @@ def api_sessions_delete(session_id: str):
     return {"ok": True}
 
 
-@router.post("/api/sessions/{session_id}/items")
+@router.post(
+    "/api/sessions/{session_id}/items",
+    operation_id="update_session_item",
+    response_model=SessionItemInfo,
+)
 def api_sessions_item_update(session_id: str, req: UpdateSessionItemRequest):
     if not req.name or not req.name.strip():
         raise HTTPException(status_code=400, detail="Ingresá el nombre del ítem.")

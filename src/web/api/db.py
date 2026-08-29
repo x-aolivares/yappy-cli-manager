@@ -10,9 +10,14 @@ from ...sync import diff as db_diff
 from ...sync import exec as syncexec
 from ...sync.conn import SyncError, connect
 from ..deps import env_config
-from ..schemas import DbDiffRequest, ExecuteRequest
+from ..schemas import (
+    DbDiffRequest,
+    DiffResponse,
+    ExecuteRequest,
+    ExecuteSqlResponse,
+)
 
-router = APIRouter()
+router = APIRouter(tags=["db"])
 
 
 def _table_structure(conn, schema: str, name: str):
@@ -22,7 +27,7 @@ def _table_structure(conn, schema: str, name: str):
     )
 
 
-@router.post("/api/db/diff")
+@router.post("/api/db/diff", operation_id="diff_db_object", response_model=DiffResponse)
 def api_db_diff(req: DbDiffRequest):
     if req.env_a == req.env_b:
         raise HTTPException(status_code=400, detail="env_a y env_b deben ser distintos")
@@ -123,7 +128,7 @@ def api_db_diff(req: DbDiffRequest):
         raise HTTPException(status_code=400, detail=f"Error de base de datos: {exc}") from exc
 
 
-@router.post("/api/execute/sql")
+@router.post("/api/execute/sql", operation_id="execute_sql", response_model=ExecuteSqlResponse)
 def api_execute_sql(req: ExecuteRequest):
     if req.object_type not in ("table", "procedure"):
         raise HTTPException(status_code=400, detail="object_type debe ser 'table' o 'procedure'")

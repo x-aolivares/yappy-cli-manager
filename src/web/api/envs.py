@@ -7,11 +7,12 @@ import os
 from fastapi import APIRouter
 
 from ...config import Config
+from ..schemas import EnvironmentsResponse
 
-router = APIRouter()
+router = APIRouter(tags=["envs"])
 
 
-@router.get("/api/envs")
+@router.get("/api/envs", operation_id="list_environments", response_model=EnvironmentsResponse)
 def api_envs():
     config_dir = Config._get_config_dir()
     found = Config.known_environments()

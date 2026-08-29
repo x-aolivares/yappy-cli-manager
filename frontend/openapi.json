@@ -1,0 +1,2152 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Yappy Region Sync",
+    "description": "Diff de DB (tablas/SP) y de par\u00e1metros SSM/Secrets entre regiones de origen y destino",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/api/envs": {
+      "get": {
+        "tags": [
+          "envs"
+        ],
+        "summary": "Api Envs",
+        "operationId": "list_environments",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/db/diff": {
+      "post": {
+        "tags": [
+          "db"
+        ],
+        "summary": "Api Db Diff",
+        "operationId": "diff_db_object",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DbDiffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiffResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/execute/sql": {
+      "post": {
+        "tags": [
+          "db"
+        ],
+        "summary": "Api Execute Sql",
+        "operationId": "execute_sql",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecuteSqlResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/params/diff": {
+      "post": {
+        "tags": [
+          "params"
+        ],
+        "summary": "Api Params Diff",
+        "operationId": "params_diff",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParamsDiffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParamsDiffResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/params/apply": {
+      "post": {
+        "tags": [
+          "params"
+        ],
+        "summary": "Api Params Apply",
+        "operationId": "params_apply",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyParamsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParamsApplyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/params/apply-execute": {
+      "post": {
+        "tags": [
+          "params"
+        ],
+        "summary": "Api Params Apply Execute",
+        "operationId": "params_apply_execute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteParamsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecuteParamsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/params/multi": {
+      "post": {
+        "tags": [
+          "params"
+        ],
+        "summary": "Api Params Multi",
+        "operationId": "params_multi",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMultiParamsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParamsMultiResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/params/get": {
+      "get": {
+        "tags": [
+          "params"
+        ],
+        "summary": "Api Params Get",
+        "operationId": "params_get",
+        "parameters": [
+          {
+            "name": "env",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Env"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParameterReadInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/params/read": {
+      "post": {
+        "tags": [
+          "params"
+        ],
+        "summary": "Api Params Read",
+        "operationId": "params_read",
+        "parameters": [
+          {
+            "name": "env",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Env"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ReadParamsEntry"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParamsReadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions": {
+      "get": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Api Sessions List",
+        "operationId": "list_sessions",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionsListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Api Sessions Create",
+        "operationId": "create_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{session_id}": {
+      "get": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Api Sessions Get",
+        "operationId": "get_session",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Api Sessions Delete",
+        "operationId": "delete_session",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{session_id}/items": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Api Sessions Item Update",
+        "operationId": "update_session_item",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSessionItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionItemInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApplyParamsRequest": {
+        "properties": {
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "new_value": {
+            "type": "string",
+            "title": "New Value"
+          },
+          "value_type": {
+            "type": "string",
+            "title": "Value Type",
+            "default": "String"
+          },
+          "with_secret": {
+            "type": "boolean",
+            "title": "With Secret",
+            "default": false
+          },
+          "new_secret_value": {
+            "type": "string",
+            "title": "New Secret Value",
+            "default": ""
+          },
+          "write_secret": {
+            "type": "boolean",
+            "title": "Write Secret",
+            "default": false
+          },
+          "write_param": {
+            "type": "boolean",
+            "title": "Write Param",
+            "default": true
+          },
+          "target": {
+            "type": "string",
+            "title": "Target",
+            "default": "a"
+          }
+        },
+        "type": "object",
+        "required": [
+          "env_a",
+          "env_b",
+          "service",
+          "name",
+          "new_value"
+        ],
+        "title": "ApplyParamsRequest"
+      },
+      "CreateMultiParamsRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "default": ""
+          },
+          "value_type": {
+            "type": "string",
+            "title": "Value Type",
+            "default": "String"
+          },
+          "envs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Envs",
+            "default": []
+          },
+          "create_secret": {
+            "type": "boolean",
+            "title": "Create Secret",
+            "default": false
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "default": false
+          },
+          "confirm": {
+            "type": "boolean",
+            "title": "Confirm",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CreateMultiParamsRequest"
+      },
+      "CreateSessionRequest": {
+        "properties": {
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service",
+            "default": "ssm"
+          },
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keys",
+            "default": []
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "reuse": {
+            "type": "boolean",
+            "title": "Reuse",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "env_a",
+          "env_b"
+        ],
+        "title": "CreateSessionRequest"
+      },
+      "DbDiffRequest": {
+        "properties": {
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name"
+          },
+          "object_type": {
+            "type": "string",
+            "title": "Object Type"
+          },
+          "object_name": {
+            "type": "string",
+            "title": "Object Name"
+          },
+          "include_deletes": {
+            "type": "boolean",
+            "title": "Include Deletes",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "env_a",
+          "env_b",
+          "schema_name",
+          "object_type",
+          "object_name"
+        ],
+        "title": "DbDiffRequest"
+      },
+      "DeleteResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "DeleteResponse"
+      },
+      "DiffResponse": {
+        "properties": {
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "object_type": {
+            "type": "string",
+            "title": "Object Type"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name"
+          },
+          "object_name": {
+            "type": "string",
+            "title": "Object Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "code_a": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code A"
+          },
+          "code_b": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code B"
+          },
+          "script": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "env_a",
+          "env_b",
+          "object_type",
+          "schema_name",
+          "object_name",
+          "status"
+        ],
+        "title": "DiffResponse"
+      },
+      "EnvironmentInfo": {
+        "properties": {
+          "env": {
+            "type": "string",
+            "title": "Env"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile"
+          },
+          "load_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Load Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "env"
+        ],
+        "title": "EnvironmentInfo"
+      },
+      "EnvironmentsResponse": {
+        "properties": {
+          "config_dir": {
+            "type": "string",
+            "title": "Config Dir"
+          },
+          "override_set": {
+            "type": "boolean",
+            "title": "Override Set"
+          },
+          "environments": {
+            "items": {
+              "$ref": "#/components/schemas/EnvironmentInfo"
+            },
+            "type": "array",
+            "title": "Environments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "config_dir",
+          "override_set",
+          "environments"
+        ],
+        "title": "EnvironmentsResponse"
+      },
+      "ExecuteParamsRequest": {
+        "properties": {
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "op": {
+            "type": "string",
+            "title": "Op",
+            "default": "update"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "new_value": {
+            "type": "string",
+            "title": "New Value",
+            "default": ""
+          },
+          "value_type": {
+            "type": "string",
+            "title": "Value Type",
+            "default": "String"
+          },
+          "confirm": {
+            "type": "boolean",
+            "title": "Confirm",
+            "default": false
+          },
+          "with_secret": {
+            "type": "boolean",
+            "title": "With Secret",
+            "default": false
+          },
+          "new_secret_value": {
+            "type": "string",
+            "title": "New Secret Value",
+            "default": ""
+          },
+          "write_secret": {
+            "type": "boolean",
+            "title": "Write Secret",
+            "default": false
+          },
+          "write_param": {
+            "type": "boolean",
+            "title": "Write Param",
+            "default": true
+          },
+          "target": {
+            "type": "string",
+            "title": "Target",
+            "default": "a"
+          }
+        },
+        "type": "object",
+        "required": [
+          "env_a",
+          "env_b",
+          "service",
+          "name"
+        ],
+        "title": "ExecuteParamsRequest"
+      },
+      "ExecuteParamsResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "op": {
+            "type": "string",
+            "title": "Op"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/StepResultInfo"
+            },
+            "type": "array",
+            "title": "Steps",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "message",
+          "env_a",
+          "env_b",
+          "service",
+          "op",
+          "name"
+        ],
+        "title": "ExecuteParamsResponse"
+      },
+      "ExecuteRequest": {
+        "properties": {
+          "env": {
+            "type": "string",
+            "title": "Env"
+          },
+          "object_type": {
+            "type": "string",
+            "title": "Object Type"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name",
+            "default": ""
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "env",
+          "object_type",
+          "code"
+        ],
+        "title": "ExecuteRequest"
+      },
+      "ExecuteSqlResponse": {
+        "properties": {
+          "env": {
+            "type": "string",
+            "title": "Env"
+          },
+          "object_type": {
+            "type": "string",
+            "title": "Object Type"
+          },
+          "schema_name": {
+            "type": "string",
+            "title": "Schema Name"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/StatementResultInfo"
+            },
+            "type": "array",
+            "title": "Results",
+            "default": []
+          },
+          "ok_count": {
+            "type": "integer",
+            "title": "Ok Count"
+          },
+          "err_count": {
+            "type": "integer",
+            "title": "Err Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "env",
+          "object_type",
+          "schema_name",
+          "ok_count",
+          "err_count"
+        ],
+        "title": "ExecuteSqlResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "MultiResultInfo": {
+        "properties": {
+          "env": {
+            "type": "string",
+            "title": "Env"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "script": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "env",
+          "ok"
+        ],
+        "title": "MultiResultInfo"
+      },
+      "ParameterReadInfo": {
+        "properties": {
+          "env": {
+            "type": "string",
+            "title": "Env"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "value_type": {
+            "type": "string",
+            "title": "Value Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "env",
+          "name",
+          "value",
+          "value_type"
+        ],
+        "title": "ParameterReadInfo"
+      },
+      "ParamsApplyResponse": {
+        "properties": {
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "script": {
+            "type": "string",
+            "title": "Script"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/StepCommandInfo"
+            },
+            "type": "array",
+            "title": "Steps",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "env_a",
+          "env_b",
+          "service",
+          "name",
+          "script"
+        ],
+        "title": "ParamsApplyResponse"
+      },
+      "ParamsDiffRequest": {
+        "properties": {
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "include_deletes": {
+            "type": "boolean",
+            "title": "Include Deletes",
+            "default": false
+          },
+          "with_secret": {
+            "type": "boolean",
+            "title": "With Secret",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "env_a",
+          "env_b",
+          "service",
+          "name"
+        ],
+        "title": "ParamsDiffRequest"
+      },
+      "ParamsDiffResponse": {
+        "properties": {
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "value_a": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value A"
+          },
+          "value_b": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value B"
+          },
+          "value_type_a": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Type A"
+          },
+          "value_type_b": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Type B"
+          },
+          "is_json": {
+            "type": "boolean",
+            "title": "Is Json",
+            "default": false
+          },
+          "changes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Changes",
+            "default": []
+          },
+          "patch_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patch Value"
+          },
+          "script": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes",
+            "default": []
+          },
+          "pair": {
+            "type": "boolean",
+            "title": "Pair",
+            "default": false
+          },
+          "secret_value_a": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Value A"
+          },
+          "secret_value_b": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Value B"
+          },
+          "secret_changes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Secret Changes",
+            "default": []
+          },
+          "secret_patch_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Patch Value"
+          },
+          "param_apply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Param Apply"
+          },
+          "secret_apply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Apply"
+          },
+          "param_status": {
+            "type": "string",
+            "title": "Param Status",
+            "default": ""
+          },
+          "secret_status": {
+            "type": "string",
+            "title": "Secret Status",
+            "default": ""
+          },
+          "param_needs_write": {
+            "type": "boolean",
+            "title": "Param Needs Write",
+            "default": false
+          },
+          "secret_needs_write": {
+            "type": "boolean",
+            "title": "Secret Needs Write",
+            "default": false
+          },
+          "steps": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Steps",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "env_a",
+          "env_b",
+          "service",
+          "name",
+          "status"
+        ],
+        "title": "ParamsDiffResponse"
+      },
+      "ParamsMultiResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "value_type": {
+            "type": "string",
+            "title": "Value Type"
+          },
+          "create_secret": {
+            "type": "boolean",
+            "title": "Create Secret"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/MultiResultInfo"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "ok_count": {
+            "type": "integer",
+            "title": "Ok Count"
+          },
+          "err_count": {
+            "type": "integer",
+            "title": "Err Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "value_type",
+          "create_secret",
+          "dry_run",
+          "results",
+          "ok_count",
+          "err_count"
+        ],
+        "title": "ParamsMultiResponse"
+      },
+      "ParamsReadResponse": {
+        "properties": {
+          "env": {
+            "type": "string",
+            "title": "Env"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ReadEntryResultInfo"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "ok_count": {
+            "type": "integer",
+            "title": "Ok Count"
+          },
+          "err_count": {
+            "type": "integer",
+            "title": "Err Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "env",
+          "results",
+          "ok_count",
+          "err_count"
+        ],
+        "title": "ParamsReadResponse"
+      },
+      "ReadEntryResultInfo": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "is_secret": {
+            "type": "boolean",
+            "title": "Is Secret"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "value_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Type"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "is_secret",
+          "service",
+          "ok"
+        ],
+        "title": "ReadEntryResultInfo"
+      },
+      "ReadParamsEntry": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "default": ""
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "is_secret": {
+            "type": "boolean",
+            "title": "Is Secret",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ReadParamsEntry"
+      },
+      "SessionDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Status Counts"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SessionItemInfo"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "env_a",
+          "env_b",
+          "service",
+          "status_counts",
+          "items"
+        ],
+        "title": "SessionDetailResponse"
+      },
+      "SessionItemInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "is_secret": {
+            "type": "boolean",
+            "title": "Is Secret"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "diff_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff Json"
+          },
+          "diff_err": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff Err"
+          },
+          "script": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "visited_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visited At"
+          },
+          "applied_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "position",
+          "service",
+          "is_secret",
+          "status"
+        ],
+        "title": "SessionItemInfo"
+      },
+      "SessionSummaryInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "env_a": {
+            "type": "string",
+            "title": "Env A"
+          },
+          "env_b": {
+            "type": "string",
+            "title": "Env B"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count"
+          },
+          "status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Status Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "env_a",
+          "env_b",
+          "service",
+          "item_count",
+          "status_counts"
+        ],
+        "title": "SessionSummaryInfo"
+      },
+      "SessionsListResponse": {
+        "properties": {
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/SessionSummaryInfo"
+            },
+            "type": "array",
+            "title": "Sessions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sessions"
+        ],
+        "title": "SessionsListResponse"
+      },
+      "StatementResultInfo": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "sql": {
+            "type": "string",
+            "title": "Sql"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "affected": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Affected"
+          },
+          "ms": {
+            "type": "number",
+            "title": "Ms",
+            "default": 0.0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "sql",
+          "ok"
+        ],
+        "title": "StatementResultInfo"
+      },
+      "StepCommandInfo": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "command": {
+            "type": "string",
+            "title": "Command"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step",
+          "command"
+        ],
+        "title": "StepCommandInfo"
+      },
+      "StepResultInfo": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step",
+          "message"
+        ],
+        "title": "StepResultInfo"
+      },
+      "UpdateSessionItemRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service"
+          },
+          "is_secret": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Secret"
+          },
+          "diff_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff Json"
+          },
+          "diff_err": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff Err"
+          },
+          "script": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "UpdateSessionItemRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

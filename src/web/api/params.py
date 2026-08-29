@@ -10,14 +10,24 @@ from ..schemas import (
     ApplyParamsRequest,
     CreateMultiParamsRequest,
     ExecuteParamsRequest,
+    ExecuteParamsResponse,
+    ParameterReadInfo,
+    ParamsApplyResponse,
     ParamsDiffRequest,
+    ParamsDiffResponse,
+    ParamsMultiResponse,
+    ParamsReadResponse,
     ReadParamsEntry,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["params"])
 
 
-@router.post("/api/params/diff")
+@router.post(
+    "/api/params/diff",
+    operation_id="params_diff",
+    response_model=ParamsDiffResponse,
+)
 def api_params_diff(req: ParamsDiffRequest):
     if req.env_a == req.env_b:
         raise HTTPException(status_code=400, detail="env_a y env_b deben ser distintos")
@@ -45,7 +55,11 @@ def api_params_diff(req: ParamsDiffRequest):
         raise HTTPException(status_code=400, detail=f"Error de AWS: {exc}") from exc
 
 
-@router.post("/api/params/apply")
+@router.post(
+    "/api/params/apply",
+    operation_id="params_apply",
+    response_model=ParamsApplyResponse,
+)
 def api_params_apply(req: ApplyParamsRequest):
     if req.env_a == req.env_b:
         raise HTTPException(status_code=400, detail="env_a y env_b deben ser distintos")
@@ -92,7 +106,11 @@ def api_params_apply(req: ApplyParamsRequest):
     }
 
 
-@router.post("/api/params/apply-execute")
+@router.post(
+    "/api/params/apply-execute",
+    operation_id="params_apply_execute",
+    response_model=ExecuteParamsResponse,
+)
 def api_params_apply_execute(req: ExecuteParamsRequest):
     if req.env_a == req.env_b:
         raise HTTPException(status_code=400, detail="env_a y env_b deben ser distintos")
@@ -171,7 +189,11 @@ def api_params_apply_execute(req: ExecuteParamsRequest):
     }
 
 
-@router.post("/api/params/multi")
+@router.post(
+    "/api/params/multi",
+    operation_id="params_multi",
+    response_model=ParamsMultiResponse,
+)
 def api_params_multi(req: CreateMultiParamsRequest):
     if not req.name or not req.name.strip():
         raise HTTPException(status_code=400, detail="Ingresá el nombre del parámetro.")
@@ -237,7 +259,11 @@ def api_params_multi(req: CreateMultiParamsRequest):
     }
 
 
-@router.get("/api/params/get")
+@router.get(
+    "/api/params/get",
+    operation_id="params_get",
+    response_model=ParameterReadInfo,
+)
 def api_params_get(env: str, name: str):
     cfg = env_config(env)
     if not name or not name.strip():
@@ -253,7 +279,11 @@ def api_params_get(env: str, name: str):
     return {"env": env, "name": name, "value": value, "value_type": type_}
 
 
-@router.post("/api/params/read")
+@router.post(
+    "/api/params/read",
+    operation_id="params_read",
+    response_model=ParamsReadResponse,
+)
 def api_params_read(env: str, body: list[ReadParamsEntry | str]):
     cfg = env_config(env)
     try:
