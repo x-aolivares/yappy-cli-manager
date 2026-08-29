@@ -54,6 +54,17 @@ function formatValue(v) {
   }
 }
 
+function diffUrl(r) {
+  const params = new URLSearchParams({
+    env_b: envB.value,
+    env_a: envA.value,
+    service: r.service || "ssm",
+    name: r.key,
+    with_secret: r.is_secret ? "1" : "0",
+  });
+  return "/params-diff?" + params.toString();
+}
+
 function render(data) {
   const total = data.results.length;
   const ok = data.ok_count;
@@ -81,6 +92,7 @@ function render(data) {
         <td>${service}</td>
         <td>${state}</td>
         <td>${preBlock(value, "—")}</td>
+        <td><a class="diff-link" href="${diffUrl(r)}" title="Comparar en Parámetros">Sincronizar →</a></td>
       </tr>`;
     })
     .join("");
@@ -90,7 +102,7 @@ function render(data) {
     `<div class="panel">
        <div class="section-title"><strong>Valores en ${escapeHtml(data.env)}</strong></div>
        <table>
-         <thead><tr><th>Nombre</th><th>Servicio</th><th>Estado</th><th>Valor</th></tr></thead>
+         <thead><tr><th>Nombre</th><th>Servicio</th><th>Estado</th><th>Valor</th><th></th></tr></thead>
          <tbody>${rows}</tbody>
        </table>
      </div>`;

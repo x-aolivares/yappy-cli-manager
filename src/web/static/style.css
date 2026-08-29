@@ -61,6 +61,9 @@ h2 { font-size: 16px; margin-bottom: 12px; }
 
 .muted { color: var(--muted); font-size: 13px; }
 
+td .diff-link { white-space: nowrap; font-size: 13px; font-weight: 600; }
+td .diff-link:hover { text-decoration: underline; }
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
