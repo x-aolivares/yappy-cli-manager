@@ -48,39 +48,48 @@ type PairKey = 'param' | 'secret';
   imports: [RouterLink, RegionControlsComponent, StatusBadge, CopyButton],
   template: `
     <h1>Diff de Parámetros / Secretos</h1>
+    <p class="muted">
+      Compara un parámetro entre la región de <strong>origen</strong> y la de <strong>destino</strong>.
+      Si el valor es JSON solo se actualizan las claves que cambiaron; el resto del parámetro queda intacto.
+      Los valores que solo existen en destino se eliminan únicamente si marcás la opción.
+    </p>
     @if (sessionId()) {
       <a class="muted" [routerLink]="['/sessions', sessionId()]">← Volver a la sesión</a>
     }
 
-    <app-region-controls
-      [environments]="environments()"
-      [withName]="true"
-      [(envB)]="envB"
-      [(envA)]="envA"
-      [(service)]="service"
-      [(nameValue)]="name"
-    />
-    <div class="checkbox-row">
-      @if (service() === 'ssm') {
+    <div class="panel">
+      <app-region-controls
+        [environments]="environments()"
+        [withName]="true"
+        [(envB)]="envB"
+        [(envA)]="envA"
+        [(service)]="service"
+        [(nameValue)]="name"
+      />
+      <div class="actions" style="justify-content:flex-end;">
+        @if (service() === 'ssm') {
+          <label class="chk">
+            <input
+              type="checkbox"
+              [checked]="withSecret()"
+              (change)="withSecret.set($any($event.target).checked)"
+            />
+            Es un secreto
+            <span class="muted" style="font-size:12px;">(parámetro + secreto emparejado en Secrets Manager)</span>
+          </label>
+        }
         <label class="chk">
           <input
             type="checkbox"
-            [checked]="withSecret()"
-            (change)="withSecret.set($any($event.target).checked)"
+            [checked]="includeDeletes()"
+            (change)="includeDeletes.set($any($event.target).checked)"
           />
-          Es un secreto (SSM + Secrets Manager)
+          Incluir eliminaciones
+          <span class="muted" style="font-size:12px;">(por lo general no se eliminan)</span>
         </label>
-      }
-      <label class="chk">
-        <input
-          type="checkbox"
-          [checked]="includeDeletes()"
-          (change)="includeDeletes.set($any($event.target).checked)"
-        />
-        Incluir eliminaciones
-      </label>
+        <button type="button" [disabled]="busy()" (click)="compare()">Comparar</button>
+      </div>
     </div>
-    <button type="button" [disabled]="busy()" (click)="compare()">Comparar</button>
 
     @if (error()) {
       <div class="error-box">{{ error() }}</div>

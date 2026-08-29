@@ -9,27 +9,33 @@ import { EnvSelectComponent } from '../shared/env-select';
   selector: 'app-params-edit-page',
   imports: [EnvSelectComponent],
   template: `
-    <h1>Editar un parámetro</h1>
+    <h1>Editar / actualizar un parámetro</h1>
+    <p class="muted">
+      Elegís un ambiente y un nombre: el valor se lee (con decodificación si es
+      <code>SecureString</code>), lo editás y lo guardás con <strong>tu confirmación</strong>.
+      Si no existe el parámetro, podés crearlo desde acá (overwrite).
+    </p>
 
-    <div class="form-grid">
-      <div>
-        <label for="env">Ambiente</label>
-        <app-env-select [environments]="environments()" [(value)]="env" />
-      </div>
-      <div>
-        <label for="name">Nombre del parámetro</label>
-        <input
-          id="name"
-          type="text"
-          [value]="name()"
-          (input)="name.set($any($event.target).value)"
-          placeholder="p. ej. /yappy/dev/rate"
-          spellcheck="false"
-          (keydown.enter)="read()"
-        />
+    <div class="panel">
+      <label for="env">Ambiente</label>
+      <app-env-select [environments]="environments()" [(value)]="env" />
+
+      <label for="name" style="margin-top:16px;">Nombre del parámetro</label>
+      <input
+        id="name"
+        type="text"
+        [value]="name()"
+        (input)="name.set($any($event.target).value)"
+        placeholder="/yappy/dev/config"
+        spellcheck="false"
+        style="max-width: 420px;"
+        (keydown.enter)="read()"
+      />
+
+      <div class="actions" style="justify-content:flex-end; margin-top:10px;">
+        <button type="button" class="secondary" [disabled]="busy()" (click)="read()">Leer</button>
       </div>
     </div>
-    <button type="button" [disabled]="busy()" (click)="read()">Ver valor actual</button>
 
     @if (error()) {
       <div class="error-box">{{ error() }}</div>
@@ -41,15 +47,37 @@ import { EnvSelectComponent } from '../shared/env-select';
 
     @if (loaded()) {
       <div class="panel">
-        <div class="muted" style="margin-bottom:8px;">{{ env() }} — {{ valueType() }}</div>
-        <label for="value">Valor</label>
+        <div class="section-title">
+          <strong>Valor actual</strong>
+          <span class="muted">{{ env() }} — {{ valueType() }}</span>
+        </div>
         <textarea
           id="value"
+          class="change-input"
+          rows="6"
           spellcheck="false"
+          style="max-height:none; min-height:120px; white-space:pre-wrap;"
           [value]="value()"
           (input)="value.set($any($event.target).value)"
         ></textarea>
-        <button type="button" [disabled]="busy()" (click)="save()">Guardar</button>
+
+        <div style="margin-top:16px;">
+          <label for="value-type">Tipo</label>
+          <select
+            id="value-type"
+            style="max-width: 260px;"
+            [value]="valueType()"
+            (change)="valueType.set($any($event.target).value)"
+          >
+            <option value="String">String</option>
+            <option value="StringList">StringList</option>
+            <option value="SecureString">SecureString</option>
+          </select>
+        </div>
+
+        <div class="actions" style="justify-content:flex-end; margin-top:10px;">
+          <button type="button" [disabled]="busy()" (click)="save()">Guardar</button>
+        </div>
         @if (resultMsg()) {
           <div class="note {{ resultIsError() ? 'err' : 'ok' }}">{{ resultMsg() }}</div>
         }

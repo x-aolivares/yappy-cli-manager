@@ -11,67 +11,78 @@ import { StatusBadge } from '../shared/status-badge';
   imports: [EnvSelectComponent, StatusBadge],
   template: `
     <h1>Compilar / Ejecutar SQL</h1>
+    <p class="muted">
+      Elegí el ambiente, el tipo de objeto y pegá el código para ejecutarlo directo contra esa base.
+      En Aurora/MySQL los stored procedures se (re)compilan con
+      <code>CREATE [OR REPLACE] PROCEDURE</code>. Cada sentencia corre con autocommit activo.
+    </p>
 
-    <div class="form-grid">
-      <div>
-        <label for="env">Ambiente</label>
-        <app-env-select [environments]="environments()" [(value)]="env" />
+    <div class="panel">
+      <div class="form-grid">
+        <div>
+          <label for="env">Ambiente</label>
+          <app-env-select [environments]="environments()" [(value)]="env" />
+        </div>
+        <div>
+          <label>Tipo de objeto</label>
+          <div class="radio-row">
+            <label>
+              <input
+                type="radio"
+                name="object-type"
+                value="table"
+                [checked]="objectType() === 'table'"
+                (change)="objectType.set('table')"
+              />
+              Tabla
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="object-type"
+                value="procedure"
+                [checked]="objectType() === 'procedure'"
+                (change)="objectType.set('procedure')"
+              />
+              Stored procedure
+            </label>
+          </div>
+        </div>
+        <div>
+          <label for="schema">Schema (opcional)</label>
+          <input
+            id="schema"
+            type="text"
+            [value]="schema()"
+            (input)="schema.set($any($event.target).value)"
+            placeholder="p. ej. yappy"
+            spellcheck="false"
+          />
+        </div>
       </div>
-    </div>
-    <div class="radio-row">
-      <label class="chk">
-        <input
-          type="radio"
-          name="object-type"
-          value="table"
-          [checked]="objectType() === 'table'"
-          (change)="objectType.set('table')"
-        />
-        Tabla
-      </label>
-      <label class="chk">
-        <input
-          type="radio"
-          name="object-type"
-          value="procedure"
-          [checked]="objectType() === 'procedure'"
-          (change)="objectType.set('procedure')"
-        />
-        Stored procedure
-      </label>
-    </div>
-    <div class="form-grid" style="margin-top:14px;">
-      <div>
-        <label for="schema">Schema (opcional)</label>
-        <input
-          id="schema"
-          type="text"
-          [value]="schema()"
-          (input)="schema.set($any($event.target).value)"
-          placeholder="p. ej. prod"
-          spellcheck="false"
-        />
-      </div>
-    </div>
-    <label for="code">Código SQL / DDL</label>
-    <textarea
-      id="code"
-      spellcheck="false"
-      [value]="code()"
-      (input)="code.set($any($event.target).value)"
-      placeholder="CREATE TABLE ... / ALTER TABLE ... / CREATE OR REPLACE PROCEDURE ..."
-    ></textarea>
-    <div class="checkbox-row" style="margin-top:10px;">
-      <label class="chk">
+
+      <label for="code">Código SQL / DDL</label>
+      <textarea
+        id="code"
+        spellcheck="false"
+        [value]="code()"
+        (input)="code.set($any($event.target).value)"
+        placeholder="Pegá acá el script, por ejemplo el que genera el DB Diff..."
+      ></textarea>
+
+      <label class="checkbox-row" style="margin-top:12px;">
         <input
           type="checkbox"
           [checked]="confirmChecked()"
           (change)="confirmChecked.set($any($event.target).checked)"
         />
-        Confirmo que quiero ejecutar esto en {{ confirmEnv() }}
+        <span>Sí, quiero ejecutar esto en <strong>{{ confirmEnv() }}</strong></span>
       </label>
+
+      <div class="actions" style="justify-content:flex-end; margin-top:10px;">
+        <button type="button" [disabled]="busy()" (click)="run()">Compilar</button>
+      </div>
     </div>
-    <button type="button" [disabled]="busy()" (click)="run()">Ejecutar</button>
 
     @if (error()) {
       <div class="error-box">{{ error() }}</div>

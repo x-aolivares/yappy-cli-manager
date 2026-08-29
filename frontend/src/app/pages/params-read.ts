@@ -14,22 +14,34 @@ import { StatusBadge } from '../shared/status-badge';
   imports: [RegionControlsComponent, StatusBadge, RouterLink],
   template: `
     <h1>Leer Parámetros / Secretos</h1>
+    <p class="muted">
+      Elegí la <strong>región de origen</strong> (de donde se leen los valores), pegá las claves,
+      <strong>una por línea</strong> (se detectan los secretos automáticamente), o como JSON con
+      <code>is_secret: true|false</code>. Lo marcado como secreto se lee de <strong>Secrets
+      Manager</strong>; el resto de <strong>SSM Parameter Store</strong> (con respaldo automático en
+      Secrets Manager si no existe en SSM). Al leer, la consulta queda <strong>anotada como sesión</strong>
+      de <em>origen → destino</em> con un link para seguir el progreso ítem por ítem.
+    </p>
 
-    <app-region-controls
-      [environments]="environments()"
-      [(envB)]="envB"
-      [(envA)]="envA"
-      [(service)]="service"
-    />
-    <label for="entries">Lista de parámetros — una clave por línea o un JSON como {{ exampleJson }}</label>
-    <textarea
-      id="entries"
-      spellcheck="false"
-      [value]="entries()"
-      (input)="entries.set($any($event.target).value)"
-      placeholder="/prod/ecommerce/db/master_url"
-    ></textarea>
-    <button type="button" [disabled]="busy()" (click)="read()">Leer valores</button>
+    <div class="panel">
+      <app-region-controls
+        [environments]="environments()"
+        [(envB)]="envB"
+        [(envA)]="envA"
+        [(service)]="service"
+      />
+      <label for="entries">Lista de parámetros</label>
+      <textarea
+        id="entries"
+        spellcheck="false"
+        [value]="entries()"
+        (input)="entries.set($any($event.target).value)"
+        placeholder="/prod/ecommerce/db/master_url&#10;/prod/payment/stripe/secret_key"
+      ></textarea>
+      <div class="actions" style="justify-content:flex-end; margin-top:10px;">
+        <button type="button" [disabled]="busy()" (click)="read()">Leer valores <span class="muted">(desde Origen)</span></button>
+      </div>
+    </div>
 
     @if (error()) {
       <div class="error-box">{{ error() }}</div>
@@ -103,8 +115,6 @@ export class ParamsReadPage {
   private readonly envService = inject(EnvironmentService);
   private readonly paramsService = inject(ParamsService);
   private readonly sessionService = inject(SessionService);
-
-  readonly exampleJson = '[{"key": "/path", "is_secret": false}]';
 
   readonly environments = signal<EnvironmentInfo[] | null>(null);
   readonly envB = signal('');

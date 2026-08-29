@@ -13,70 +13,87 @@ import { RegionControlsComponent } from '../shared/region-controls';
   imports: [RegionControlsComponent, StatusBadge, CopyButton],
   template: `
     <h1>Diff de Base de Datos</h1>
+    <p class="muted">
+      Se comparan las dos regiones — <strong>origen → destino</strong> — y se genera el script
+      para actualizar la región de destino con los cambios de la región de origen.
+    </p>
 
-    <app-region-controls
-      [environments]="environments()"
-      [withService]="false"
-      [(envB)]="envB"
-      [(envA)]="envA"
-    />
-    <div class="form-grid">
-      <div>
-        <label for="schema">Schema</label>
-        <input
-          id="schema"
-          type="text"
-          [value]="schema()"
-          (input)="schema.set($any($event.target).value)"
-          placeholder="p. ej. prod"
-          spellcheck="false"
-        />
+    <div class="panel">
+      <app-region-controls
+        [environments]="environments()"
+        [withService]="false"
+        [(envB)]="envB"
+        [(envA)]="envA"
+      />
+      <div class="form-grid">
+        <div>
+          <label for="schema">Schema</label>
+          <input
+            id="schema"
+            type="text"
+            [value]="schema()"
+            (input)="schema.set($any($event.target).value)"
+            placeholder="p. ej. yappy"
+            spellcheck="false"
+          />
+        </div>
+        <div>
+          <label for="object-name">Nombre del objeto</label>
+          <input
+            id="object-name"
+            type="text"
+            [value]="objectName()"
+            (input)="objectName.set($any($event.target).value)"
+            placeholder="p. ej. users"
+            spellcheck="false"
+          />
+        </div>
       </div>
-      <div>
-        <label for="object-name">Objeto</label>
-        <input
-          id="object-name"
-          type="text"
-          [value]="objectName()"
-          (input)="objectName.set($any($event.target).value)"
-          placeholder="p. ej. t_comandas"
-          spellcheck="false"
-        />
+      <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+        <div>
+          <label>Tipo de objeto</label>
+          <div class="radio-row">
+            <label>
+              <input
+                type="radio"
+                name="object-type"
+                value="table"
+                [checked]="objectType() === 'table'"
+                (change)="objectType.set('table')"
+              />
+              Tabla
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="object-type"
+                value="procedure"
+                [checked]="objectType() === 'procedure'"
+                (change)="objectType.set('procedure')"
+              />
+              Stored procedure
+            </label>
+          </div>
+          <div style="margin-top:12px;">
+            <label class="chk">
+              <input
+                type="checkbox"
+                [checked]="includeDeletes()"
+                (change)="includeDeletes.set($any($event.target).checked)"
+              />
+              Incluir eliminaciones
+            </label>
+            <p class="muted" style="margin-top:4px; font-size:12px;">
+              Por lo general no se eliminan, pero podés activar el DROP para objetos que solo existen
+              en la región destino.
+            </p>
+          </div>
+        </div>
+        <div class="actions" style="align-items:flex-end; justify-content:flex-end;">
+          <button type="button" [disabled]="busy()" (click)="compare()">Comparar</button>
+        </div>
       </div>
     </div>
-    <div class="radio-row">
-      <label class="chk">
-        <input
-          type="radio"
-          name="object-type"
-          value="table"
-          [checked]="objectType() === 'table'"
-          (change)="objectType.set('table')"
-        />
-        Tabla
-      </label>
-      <label class="chk">
-        <input
-          type="radio"
-          name="object-type"
-          value="procedure"
-          [checked]="objectType() === 'procedure'"
-          (change)="objectType.set('procedure')"
-        />
-        Stored procedure
-      </label>
-    </div>
-    <div class="checkbox-row" style="margin-top:10px;">
-      <label class="chk">
-        <input
-          type="checkbox"
-          [checked]="includeDeletes()"
-          (change)="includeDeletes.set($any($event.target).checked)"
-        />
-        Incluir eliminaciones
-      </label>
-    </div>
-    <button type="button" [disabled]="busy()" (click)="compare()">Comparar</button>
 
     @if (error()) {
       <div class="error-box">{{ error() }}</div>
@@ -110,7 +127,7 @@ import { RegionControlsComponent } from '../shared/region-controls';
             <div class="section-title">
               <strong>Script de eliminación (ejecutar en la región destino: {{ result()!.env_a }})</strong>
             </div>
-            <pre>{{ result()!.script }}</pre>
+            <pre class="script-block">{{ result()!.script }}</pre>
             <div class="actions" style="margin-top:10px;">
               <app-copy-button [text]="result()!.script ?? ''" />
             </div>
@@ -134,7 +151,7 @@ import { RegionControlsComponent } from '../shared/region-controls';
             <strong>Script de actualización (ejecutar en la región destino: {{ result()!.env_a }})</strong>
           </div>
           @if (result()!.script) {
-            <pre>{{ result()!.script }}</pre>
+            <pre class="script-block">{{ result()!.script }}</pre>
             <div class="actions" style="margin-top:10px;">
               <app-copy-button [text]="result()!.script ?? ''" />
             </div>
