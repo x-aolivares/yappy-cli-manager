@@ -155,6 +155,19 @@ function makeCopyBtn() {
   return btn;
 }
 
+function makePreviewCopyBtn() {
+  const btn = document.createElement("button");
+  btn.className = "secondary";
+  btn.textContent = "Copiar valor";
+  btn.addEventListener("click", async () => {
+    const pre = document.getElementById("preview-pre");
+    const ok = await copyText(pre ? pre.textContent : "");
+    btn.textContent = ok ? "¡Copiado!" : "Error al copiar";
+    setTimeout(() => (btn.textContent = "Copiar valor"), 1500);
+  });
+  return btn;
+}
+
 /* --- Rendering --- */
 
 function render(payload) {
@@ -220,6 +233,8 @@ function render(payload) {
     onEdit();
     const wrap = document.getElementById("script-actions");
     if (wrap) wrap.appendChild(makeCopyBtn());
+    const pwrap = document.getElementById("preview-actions");
+    if (pwrap) pwrap.appendChild(makePreviewCopyBtn());
     return;
   }
 
@@ -234,6 +249,8 @@ function render(payload) {
     onEdit();
     const wrap = document.getElementById("script-actions");
     if (wrap) wrap.appendChild(makeCopyBtn());
+    const pwrap = document.getElementById("preview-actions");
+    if (pwrap) pwrap.appendChild(makePreviewCopyBtn());
     return;
   }
 
@@ -301,13 +318,14 @@ function renderChangesTable() {
    </div>
    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; margin-top:14px;">
      <div class="panel">
-       <div class="section-title"><strong>Valor resultante en destino (${escapeHtml(data.env_a)})</strong></div>
-       <pre id="preview-pre" class="script-block"></pre>
-     </div>
-     <div class="panel script-block">
-       <div class="section-title"><strong>Comando de actualización para la región destino (${escapeHtml(data.env_a)})</strong></div>
-       <pre id="script-pre" class="script-block">Regenerando…</pre>
-       <div class="actions" style="margin-top:10px;"><span id="script-actions"></span></div>
+<div class="section-title"><strong>Valor resultante hacia la region destino (${escapeHtml(data.env_a)})</strong></div>
+        <pre id="preview-pre" class="script-block"></pre>
+        <div class="actions" style="margin-top:10px;"><span id="preview-actions"></span></div>
+      </div>
+      <div class="panel script-block">
+        <div class="section-title"><strong>Comando de actualización para la región destino (${escapeHtml(data.env_a)})</strong></div>
+        <pre id="script-pre" class="script-block">Regenerando…</pre>
+        <div class="actions" style="margin-top:10px;"><span id="script-actions"></span></div>
      </div>
    </div>`;
 }
@@ -320,8 +338,9 @@ function renderPlainEdit() {
    </div>
    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; margin-top:14px;">
      <div class="panel">
-       <div class="section-title"><strong>Valor resultante en destino</strong></div>
-       <pre id="preview-pre" class="script-block"></pre>
+<div class="section-title"><strong>Valor resultante hacia la region destino</strong></div>
+        <pre id="preview-pre" class="script-block"></pre>
+        <div class="actions" style="margin-top:10px;"><span id="preview-actions"></span></div>
      </div>
      <div class="panel script-block">
        <div class="section-title"><strong>Comando de actualización para la región destino (${escapeHtml(data.env_a)})</strong></div>
