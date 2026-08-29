@@ -1,0 +1,25 @@
+import { Component, input, signal } from '@angular/core';
+import { copyText } from '../core/copy';
+
+@Component({
+  selector: 'app-copy-button',
+  template: `
+    <button class="secondary" type="button" (click)="copy()" [disabled]="!text()">
+      {{ copied() ? '¡Copiado!' : label() }}
+    </button>
+  `,
+})
+export class CopyButton {
+  text = input('');
+  label = input('Copiar script');
+
+  readonly copied = signal(false);
+  private timer: ReturnType<typeof setTimeout> | null = null;
+
+  async copy() {
+    const ok = await copyText(this.text());
+    this.copied.set(ok);
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.copied.set(false), 1500);
+  }
+}

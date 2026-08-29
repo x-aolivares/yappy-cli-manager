@@ -319,3 +319,241 @@ pre {
   padding: 30px;
   font-size: 14px;
 }
+
+// ============================================================
+// Formularios y controles (portados de la web vanilla)
+// ============================================================
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+select,
+input[type='text'],
+input:not([type]),
+textarea {
+  width: 100%;
+  background: var(--code-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+textarea {
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 13px;
+  min-height: 220px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.change-input {
+  width: 100%;
+  min-height: 34px;
+  max-height: 220px;
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre;
+  overflow: auto;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
+select:focus,
+input:focus,
+textarea:focus {
+  outline: 1px solid var(--accent);
+}
+
+.checkbox-row {
+  input {
+    accent-color: var(--accent);
+    width: auto;
+  }
+}
+
+.env-check input[type='checkbox'],
+.change-include,
+.pair-include {
+  accent-color: var(--accent);
+}
+
+button {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 18px;
+  font-size: 14px;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+
+  &.secondary {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// ============================================================
+// Badges de estado
+// ============================================================
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid;
+
+  &.equal,
+  &.none {
+    color: var(--ok);
+    border-color: var(--ok);
+  }
+
+  &.different,
+  &.error {
+    color: var(--err);
+    border-color: var(--err);
+  }
+
+  &.missing_in_a,
+  &.secret {
+    color: var(--warn);
+    border-color: var(--warn);
+  }
+
+  &.missing_in_b {
+    color: var(--muted);
+    border-color: var(--muted);
+  }
+
+  &.ok {
+    color: var(--ok);
+    border-color: var(--ok);
+  }
+}
+
+// ============================================================
+// Tablas
+// ============================================================
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+td .diff-link {
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+// ============================================================
+// Spinner + resultados SQL
+// ============================================================
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.progress-track {
+  flex: 1;
+  min-width: 140px;
+  background: var(--panel);
+  border-radius: 6px;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--ok);
+}
+
+.stmt-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.stmt-preview {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.stmt-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+// ============================================================
+// Detalles colapsables (guardado de sesión)
+// ============================================================
+details {
+  margin-top: 6px;
+
+  summary {
+    &.muted {
+      font-size: 12px;
+      cursor: pointer;
+    }
+  }
+}
