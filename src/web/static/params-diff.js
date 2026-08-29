@@ -920,7 +920,7 @@ compareBtn.addEventListener("click", async () => {
       sessionUpdate({
         status: "revisado",
         service: payload.service,
-        is_secret: payload.with_secret,
+        is_secret: payload.with_secret || !!data.pair,
         diff_json: JSON.stringify(data),
         diff_err: null,
         script: data.script || null,

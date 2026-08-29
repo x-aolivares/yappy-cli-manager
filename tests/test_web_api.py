@@ -304,6 +304,114 @@ def test_api_params_diff_with_secret_rejected_for_secretsmanager(monkeypatch):
     assert "SSM" in str(exc_info.value.detail)
 
 
+def test_api_params_diff_auto_enters_pair_when_secret_exists(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+    monkeypatch.setattr(
+        p,
+        "read_secret",
+        staticmethod(lambda cfg, name: "valor-del-secreto"),
+    )
+
+    captured = {}
+    monkeypatch.setattr(
+        p, "diff_params",
+        lambda cfg_a, cfg_b, service, name, env_a, env_b, **kwargs: p.ParamDiffResult(
+            env_a=env_a, env_b=env_b, service=service, name=name,
+            status="different", value_a="param-a", value_b="param-b",
+        ),
+    )
+    monkeypatch.setattr(
+        p, "diff_params_pair",
+        lambda cfg_a, cfg_b, name, env_a, env_b: captured.update(
+            name=name, env_a=env_a, env_b=env_b,
+        ) or p.ParamDiffResult(
+            env_a=env_a, env_b=env_b, service="ssm", name=name,
+            status="different", pair=True, param_needs_write=True,
+            secret_needs_write=True, secret_value_a="secret-a",
+            secret_value_b="secret-b", notes=["Hay cambios."],
+        ),
+    )
+
+    payload = api_params_diff(
+        ParamsDiffRequest(env_a="dev", env_b="qa", service="ssm", name="/abc")
+    )
+
+    assert captured == {"name": "/abc", "env_a": "dev", "env_b": "qa"}
+    assert payload["pair"] is True
+    assert payload["secret_value_a"] == "secret-a"
+    assert any("mismo nombre" in n for n in payload["notes"])
+
+
+def test_api_params_diff_no_auto_pair_when_no_secret(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+    monkeypatch.setattr(
+        p, "read_secret",
+        staticmethod(lambda cfg, name: (_ for _ in ()).throw(p.ParamNotFound(name))),
+    )
+
+    calls = []
+    monkeypatch.setattr(
+        p, "diff_params",
+        lambda cfg_a, cfg_b, service, name, env_a, env_b, **kwargs: calls.append(
+            (service, name, env_a, env_b)
+        ) or p.ParamDiffResult(
+            env_a=env_a, env_b=env_b, service=service, name=name,
+            status="equal", value_a="v", value_b="v",
+        ),
+    )
+    monkeypatch.setattr(
+        p, "diff_params_pair",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no debería llamarse")),
+    )
+
+    payload = api_params_diff(
+        ParamsDiffRequest(env_a="dev", env_b="qa", service="ssm", name="/abc")
+    )
+
+    assert calls == [("ssm", "/abc", "dev", "qa")]
+    assert payload["pair"] is False
+
+
+def test_api_params_diff_no_auto_pair_for_secretsmanager_service(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+    monkeypatch.setattr(
+        p, "read_secret",
+        staticmethod(lambda cfg, name: "valor-del-secreto"),
+    )
+
+    calls = []
+    monkeypatch.setattr(
+        p, "diff_params",
+        lambda cfg_a, cfg_b, service, name, env_a, env_b, **kwargs: calls.append(
+            service
+        ) or p.ParamDiffResult(
+            env_a=env_a, env_b=env_b, service=service, name=name,
+            status="equal", value_a="v", value_b="v",
+        ),
+    )
+    monkeypatch.setattr(
+        p, "diff_params_pair",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no debería llamarse")),
+    )
+
+    api_params_diff(
+        ParamsDiffRequest(
+            env_a="dev", env_b="qa", service="secretsmanager", name="/abc"
+        )
+    )
+
+    assert calls == ["secretsmanager"]
+
+
 def test_api_params_apply_with_secret_builds_steps_in_order(monkeypatch):
     monkeypatch.setattr(
         Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])

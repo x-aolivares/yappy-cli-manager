@@ -548,7 +548,7 @@ export class ParamsDiffPage {
         this.sessionUpdate({
           status: 'revisado',
           service: this.service(),
-          is_secret: this.withSecret(),
+          is_secret: this.withSecret() || !!d.pair,
           diff_json: JSON.stringify(d),
           diff_err: null,
           script: d.script ?? null,

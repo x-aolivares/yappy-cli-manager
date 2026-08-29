@@ -23,6 +23,19 @@ from ..schemas import (
 router = APIRouter(tags=["params"])
 
 
+def _has_paired_secret(cfg_a, cfg_b, name: str) -> bool:
+    """True if a same-name secret exists in either region (SSM+secret pair)."""
+    for cfg in (cfg_a, cfg_b):
+        try:
+            p.read_secret(cfg, name)
+        except p.ParamNotFound:
+            continue
+        except Exception:  # noqa: BLE001 — binary/no-value secrets don't pair
+            continue
+        return True
+    return False
+
+
 @router.post(
     "/api/params/diff",
     operation_id="params_diff",
@@ -50,6 +63,15 @@ def api_params_diff(req: ParamsDiffRequest):
                 cfg_a, cfg_b, req.service, req.name, req.env_a, req.env_b,
                 include_deletes=req.include_deletes,
             )
+            if req.service == "ssm" and _has_paired_secret(cfg_a, cfg_b, req.name):
+                result = p.diff_params_pair(
+                    cfg_a, cfg_b, req.name, req.env_a, req.env_b
+                )
+                result.notes = [
+                    "Existe un secreto con el mismo nombre en Secrets Manager: "
+                    "se resuelve y se trabaja en modo par (secreto → parámetro).",
+                    *result.notes,
+                ]
         return result.to_dict()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Error de AWS: {exc}") from exc
