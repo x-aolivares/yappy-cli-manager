@@ -1,14 +1,19 @@
+/* --- Session context (opened from /sessions/<id>) --- */
+
+const q = new URLSearchParams(location.search);
+const SESSION_ID = q.get("session");
+
+renderRegionControls(document.getElementById("region-controls"), {
+  name: true,
+  nameValue: q.get("name"),
+});
+
 const envA = document.getElementById("env-a");
 const envB = document.getElementById("env-b");
 const serviceSel = document.getElementById("service");
 const secretWrap = document.getElementById("secret-wrap");
 const compareBtn = document.getElementById("compare-btn");
 const result = document.getElementById("result");
-
-/* --- Session context (opened from /sessions/<id>) --- */
-
-const q = new URLSearchParams(location.search);
-const SESSION_ID = q.get("session");
 
 function sessionUpdate(fields) {
   if (!SESSION_ID || !data || !data.name) return Promise.resolve();

@@ -26,56 +26,25 @@
   <main>
     <h1>Leer Parámetros / Secretos</h1>
     <p class="muted">
-      Elegí el ambiente y pegá las claves, <strong>una por línea</strong> (se detectan los
-      secretos automáticamente), o como JSON con <code>is_secret: true|false</code>. Lo marcado
-      como secreto se lee de <strong>Secrets Manager</strong>; el resto de <strong>SSM Parameter
-      Store</strong> (con respaldo automático en Secrets Manager si no existe en SSM). Los
-      valores se muestran tal cual. Con la misma lista podés <strong>crear una sesión</strong> para
-      sincronizarlos ítem por ítem.
+      Elegí la <strong>región de origen</strong> (de donde se leen los valores), pegá las claves,
+      <strong>una por línea</strong> (se detectan los secretos automáticamente), o como JSON con
+      <code>is_secret: true|false</code>. Lo marcado como secreto se lee de <strong>Secrets
+      Manager</strong>; el resto de <strong>SSM Parameter Store</strong> (con respaldo automático en
+      Secrets Manager si no existe en SSM). Con la misma lista podés <strong>crear una sesión</strong>
+      de <em>origen → destino</em> para sincronizar los parámetros ítem por ítem.
     </p>
 
     <div class="panel">
-      <div>
-        <label for="env">Ambiente</label>
-        <select id="env" style="max-width: 420px;"></select>
-      </div>
+      <div id="region-controls"></div>
 
-      <label for="entries" style="margin-top:16px;">Lista de parámetros</label>
+      <label for="entries">Lista de parámetros</label>
       <textarea id="entries" spellcheck="false"
         placeholder="/prod/ecommerce/db/master_url
 /prod/payment/stripe/secret_key"></textarea>
 
       <div class="actions" style="justify-content:flex-end; margin-top:10px;">
-        <button id="read-btn">Leer valores</button>
-      </div>
-    </div>
-
-    <div class="panel" style="margin-top:16px;">
-      <div class="section-title">
-        <strong>Nueva sesión de sincronización</strong>
-        <span class="muted" style="font-size:12px;">
-          (usa la misma lista de arriba — quedá guardada para ir ítem por ítem en Parámetros)
-        </span>
-      </div>
-      <div class="form-grid">
-        <div>
-          <label for="ses-env-b">Región de Origen</label>
-          <select id="ses-env-b"></select>
-        </div>
-        <div>
-          <label for="ses-env-a">Región Destino</label>
-          <select id="ses-env-a"></select>
-        </div>
-        <div>
-          <label for="ses-service">Servicio</label>
-          <select id="ses-service">
-            <option value="ssm">SSM Parameter Store</option>
-            <option value="secretsmanager">Secrets Manager</option>
-          </select>
-        </div>
-      </div>
-      <div class="actions" style="justify-content:flex-end; margin-top:10px;">
-        <button id="session-btn">Crear sesión</button>
+        <button id="read-btn">Leer valores <span class="muted">(desde Origen)</span></button>
+        <button id="session-btn" class="secondary">Crear sesión</button>
       </div>
     </div>
 

@@ -33,6 +33,43 @@ async function loadEnvs(...selects) {
   });
 }
 
+function renderRegionControls(host, opts = {}) {
+  const grid = document.createElement("div");
+  grid.className = "form-grid";
+  const service = opts.service !== false;
+  grid.innerHTML =
+    `
+    <div>
+      <label for="env-b">Región de Origen</label>
+      <select id="env-b"></select>
+    </div>
+    <div>
+      <label for="env-a">Región Destino</label>
+      <select id="env-a"></select>
+    </div>` +
+    (service
+      ? `
+    <div>
+      <label for="service">Servicio</label>
+      <select id="service">
+        <option value="ssm">SSM Parameter Store</option>
+        <option value="secretsmanager">Secrets Manager</option>
+      </select>
+    </div>`
+      : "") +
+    (opts.name
+      ? `
+    <div>
+      <label for="name">Nombre del parámetro / secreto</label>
+      <input type="text" id="name" value="${escapeHtml(opts.nameValue || "")}"
+        placeholder="${escapeHtml(opts.namePlaceholder || "p. ej. /yappy/dev/rate")}" spellcheck="false" />
+    </div>`
+      : "");
+  const hostEl =
+    typeof host === "string" ? document.querySelector(host) : host;
+  hostEl.appendChild(grid);
+}
+
 function statusBadge(status) {
   return `<span class="badge ${status}">${STATUS_LABELS[status] || status}</span>`;
 }

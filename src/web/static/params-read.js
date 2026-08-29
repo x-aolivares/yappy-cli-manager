@@ -1,12 +1,14 @@
-const envSel = document.getElementById("env");
+renderRegionControls(document.getElementById("region-controls"));
+
+const envB = document.getElementById("env-b");
+const envA = document.getElementById("env-a");
+const serviceSel = document.getElementById("service");
 const readBtn = document.getElementById("read-btn");
+const sessionBtn = document.getElementById("session-btn");
 const entriesInput = document.getElementById("entries");
 const result = document.getElementById("result");
-const sesEnvB = document.getElementById("ses-env-b");
-const sesEnvA = document.getElementById("ses-env-a");
-const sessionBtn = document.getElementById("session-btn");
 
-loadEnvs(envSel, sesEnvB, sesEnvA).catch((e) => {
+loadEnvs(envB, envA).catch((e) => {
   result.innerHTML = renderError("No se pudieron cargar los ambientes: " + e.message);
 });
 
@@ -95,9 +97,9 @@ function render(data) {
 }
 
 readBtn.addEventListener("click", async () => {
-  const env = envSel.value;
+  const env = envB.value;
   if (!env) {
-    result.innerHTML = renderError("Seleccioná el ambiente.");
+    result.innerHTML = renderError("Seleccioná la región de origen.");
     return;
   }
 
@@ -135,13 +137,13 @@ readBtn.addEventListener("click", async () => {
 });
 
 sessionBtn.addEventListener("click", async () => {
-  const envB = sesEnvB.value;
-  const envA = sesEnvA.value;
-  if (!envB || !envA) {
+  const envB_ = envB.value;
+  const envA_ = envA.value;
+  if (!envB_ || !envA_) {
     result.innerHTML = renderError("Seleccioná la región de origen y la de destino.");
     return;
   }
-  if (envA === envB) {
+  if (envA_ === envB_) {
     result.innerHTML = renderError("La región de origen y la de destino deben ser distintas.");
     return;
   }
@@ -157,17 +159,17 @@ sessionBtn.addEventListener("click", async () => {
 
   sessionBtn.disabled = true;
   result.innerHTML = `<div class="panel"><span class="spinner"></span>Creando sesión con ${keys.length} parámetros (${escapeHtml(
-    envB,
-  )} → ${escapeHtml(envA)})...</div>`;
+    envB_,
+  )} → ${escapeHtml(envA_)})...</div>`;
 
   try {
     const res = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        env_a: envA,
-        env_b: envB,
-        service: document.getElementById("ses-service").value,
+        env_a: envA_,
+        env_b: envB_,
+        service: serviceSel.value,
         keys,
       }),
     });
