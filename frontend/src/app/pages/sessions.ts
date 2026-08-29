@@ -19,21 +19,27 @@ import { StatusBadge } from '../shared/status-badge';
       <strong>Parámetros</strong> para ver el diff y ejecutar el cambio. Acá queda guardado el
       progreso de todo — sin tocar AWS.
     </p>
-    <a
-      class="primary"
-      routerLink="/params-read"
-      style="text-decoration:none; display:inline-block; margin-bottom:16px;"
-    >Crear una nueva sesión</a>
 
+    <div class="panel" style="margin-top:0;">
+      <label for="session-search">Filtrar por nombre</label>
+      <input
+        id="session-search"
+        type="text"
+        [value]="filterText()"
+        (input)="filterText.set($any($event.target).value)"
+        placeholder="release/REP-000000 o /prod/api/..."
+      />
+    </div>
+ 
     @if (error()) {
-      <div class="error-box">{{ error() }}</div>
+     <div class="error-box">{{ error() }}</div>
     }
-
+ 
     @if (busy() && !sessions()) {
-      <div class="panel"><span class="spinner"></span>Cargando sesiones…</div>
+     <div class="panel"><span class="spinner"></span>Cargando sesiones…</div>
     }
 
-    @for (s of sessions() ?? []; track s.id) {
+    @for (s of filteredSessions(); track s.id) {
       <div class="panel">
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
           <div style="flex:1; min-width:220px;">
@@ -63,7 +69,10 @@ import { StatusBadge } from '../shared/status-badge';
       </div>
     } @empty {
       @if (sessions() !== null) {
-        <div class="panel"><span class="muted">Todavía no hay sesiones.</span></div>
+        <div class="panel" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <span class="muted">Todavía no hay sesiones.</span>
+          <a class="primary" routerLink="/params-read" style="margin-left:auto;">Crear una nueva sesión</a>
+        </div>
       }
     }
   `,
@@ -72,12 +81,25 @@ export class SessionsPage {
   private readonly sessionService = inject(SessionService);
 
   readonly sessions = signal<SessionSummaryInfo[] | null>(null);
+  readonly filterText = signal('');
   readonly error = signal<string | null>(null);
   readonly busy = signal(false);
   readonly deleting = signal(false);
 
   constructor() {
     void this.load();
+  }
+
+  filteredSessions(): SessionSummaryInfo[] {
+    const q = this.filterText().trim().toLowerCase();
+    const all = this.sessions() ?? [];
+    if (!q) return all;
+    return all.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q) ||
+        `${s.env_a} ${s.env_b}`.toLowerCase().includes(q),
+    );
   }
 
   load() {

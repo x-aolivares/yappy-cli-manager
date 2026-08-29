@@ -24,15 +24,37 @@ router = APIRouter(tags=["params"])
 
 
 def _has_paired_secret(cfg_a, cfg_b, name: str) -> bool:
-    """True if a same-name secret exists in either region (SSM+secret pair)."""
+    """True when an SSM param is backed by a secret in either region.
+
+    This supports both the legacy same-name secret pattern and the newer
+    secret-alias pattern where the SSM value itself equals the secret name.
+    """
     for cfg in (cfg_a, cfg_b):
         try:
             p.read_secret(cfg, name)
+            return True
+        except p.ParamNotFound:
+            pass
+        except Exception:  # noqa: BLE001 — binary/no-value secrets don't pair
+            pass
+
+        try:
+            param_value, _ = p.read_parameter(cfg, name)
+        except p.ParamNotFound:
+            continue
+        except Exception:  # noqa: BLE001 — unreadable parameter is not a valid pair
+            continue
+
+        secret_ref = str(param_value).strip()
+        if not secret_ref or secret_ref == name:
+            continue
+        try:
+            p.read_secret(cfg, secret_ref)
+            return True
         except p.ParamNotFound:
             continue
         except Exception:  # noqa: BLE001 — binary/no-value secrets don't pair
             continue
-        return True
     return False
 
 
@@ -217,6 +239,11 @@ def api_params_apply_execute(req: ExecuteParamsRequest):
     response_model=ParamsMultiResponse,
 )
 def api_params_multi(req: CreateMultiParamsRequest):
+    if req.service not in ("ssm", "secretsmanager", "ssm+secret"):
+        raise HTTPException(
+            status_code=400,
+            detail="service debe ser 'ssm', 'secretsmanager' o 'ssm+secret'.",
+        )
     if not req.name or not req.name.strip():
         raise HTTPException(status_code=400, detail="Ingresá el nombre del parámetro.")
     if not req.envs:
@@ -229,8 +256,20 @@ def api_params_multi(req: CreateMultiParamsRequest):
     if not req.dry_run and not req.confirm:
         raise HTTPException(status_code=400, detail="Se requiere confirmación explícita para ejecutar.")
 
-    # Modo secreto: el parámetro se escribe siempre como SecureString.
-    value_type = "SecureString" if req.create_secret else req.value_type
+    secret_name = (req.secret_name or req.name).strip()
+    secret_value = req.secret_value or req.value
+    create_secret = bool(req.create_secret or req.service == "ssm+secret")
+    if req.service == "secretsmanager":
+        create_secret = True
+        secret_name = req.secret_name.strip() or req.name.strip()
+        secret_value = req.secret_value or req.value
+    if req.service == "ssm+secret" or (req.service == "ssm" and req.create_secret):
+        create_secret = True
+        secret_name = req.secret_name.strip() or req.name.strip()
+        secret_value = req.secret_value or req.value
+        req.value = secret_name
+
+    value_type = "SecureString" if create_secret else req.value_type
 
     results = []
     for env in req.envs:
@@ -241,24 +280,34 @@ def api_params_multi(req: CreateMultiParamsRequest):
             continue
         try:
             if req.dry_run:
-                scripts = [p.build_ssm_script(req.name, req.value, value_type, cfg)]
-                if req.create_secret:
-                    scripts.insert(0, p.build_secret_script(req.name, req.value, cfg))
+                scripts = []
+                if req.service == "secretsmanager":
+                    scripts.append(p.build_secret_script(secret_name, secret_value, cfg))
+                else:
+                    if create_secret:
+                        scripts.append(p.build_secret_script(secret_name, secret_value, cfg))
+                    scripts.append(p.build_ssm_script(req.name, req.value, value_type, cfg))
                 results.append({"env": env, "ok": True, "script": "\n\n".join(scripts)})
             else:
                 errors = []
                 messages = []
-                if req.create_secret:
+                if req.service == "secretsmanager":
                     try:
-                        messages.append(p.update_secret(cfg, req.name, req.value)["message"])
+                        messages.append(p.update_secret(cfg, secret_name, secret_value)["message"])
                     except Exception as exc:
                         errors.append(f"secreto: {exc}")
-                try:
-                    messages.append(
-                        p.put_parameter(cfg, req.name, req.value, value_type)["message"]
-                    )
-                except Exception as exc:
-                    errors.append(f"parámetro: {exc}")
+                else:
+                    if create_secret:
+                        try:
+                            messages.append(p.update_secret(cfg, secret_name, secret_value)["message"])
+                        except Exception as exc:
+                            errors.append(f"secreto: {exc}")
+                    try:
+                        messages.append(
+                            p.put_parameter(cfg, req.name, req.value, value_type)["message"]
+                        )
+                    except Exception as exc:
+                        errors.append(f"parámetro: {exc}")
                 if errors:
                     results.append(
                         {"env": env, "ok": False, "error": " | ".join(errors)}
@@ -273,7 +322,7 @@ def api_params_multi(req: CreateMultiParamsRequest):
     return {
         "name": req.name,
         "value_type": value_type,
-        "create_secret": req.create_secret,
+        "create_secret": create_secret,
         "dry_run": req.dry_run,
         "results": results,
         "ok_count": sum(1 for r in results if r["ok"]),

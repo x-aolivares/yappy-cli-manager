@@ -63,6 +63,9 @@ class CreateMultiParamsRequest(BaseModel):
     name: str
     value: str = ""
     value_type: str = "String"
+    service: str = "ssm"
+    secret_name: str = ""
+    secret_value: str = ""
     envs: list[str] = []
     create_secret: bool = False
     dry_run: bool = False
@@ -88,6 +91,7 @@ class CreateSessionRequest(BaseModel):
     service: str = "ssm"
     keys: list[str] = []
     title: str = ""
+    alias: str = ""
     reuse: bool = False
 
 

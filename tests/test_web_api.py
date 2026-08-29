@@ -756,11 +756,50 @@ def test_api_params_multi_with_secret_dry_run_builds_both_scripts(monkeypatch):
     )
 
     assert captured["secret"] == ("/s", "hunter2", "dev")
-    assert captured["ssm"][0:2] == ("/s", "hunter2")
+    assert captured["ssm"][0:2] == ("/s", "/s")
     assert captured["ssm"][2] == "SecureString"
     script = payload["results"][0]["script"]
     assert "secret dev" in script and "ssm dev" in script
     assert payload["value_type"] == "SecureString"
+
+
+def test_api_params_multi_ssm_secret_mode_sets_parameter_value_to_secret_name(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    captured = {}
+    monkeypatch.setattr(
+        p, "build_ssm_script",
+        lambda name, value, value_type, cfg: (
+            captured.__setitem__("ssm", (name, value, value_type)) or f"ssm {cfg._env}"
+        ),
+    )
+    monkeypatch.setattr(
+        p, "build_secret_script",
+        lambda name, value, cfg: (
+            captured.__setitem__("secret", (name, value)) or f"secret {cfg._env}"
+        ),
+    )
+
+    payload = api_params_multi(
+        CreateMultiParamsRequest(
+            name="/prod/network/ecs/cluster_name",
+            value="legacy-value",
+            secret_name="db-pass-xd-aws",
+            secret_value="12lj1242&jk4%",
+            envs=["dev"],
+            service="ssm",
+            create_secret=True,
+            dry_run=True,
+            confirm=True,
+        )
+    )
+
+    assert payload["results"][0]["script"]
+    assert captured["ssm"] == ("/prod/network/ecs/cluster_name", "db-pass-xd-aws", "SecureString")
+    assert captured["secret"] == ("db-pass-xd-aws", "12lj1242&jk4%")
 
 
 def test_api_params_multi_with_secret_executes_secret_then_param(monkeypatch):

@@ -129,6 +129,7 @@ def create_session(
     keys: list[str],
     service: str = "ssm",
     title: str = "",
+    alias: str = "",
     reuse: bool = False,
 ) -> dict:
     if env_a == env_b:
@@ -158,7 +159,7 @@ def create_session(
         f"{uuid.uuid4().hex[:6]}"
     )
     created = _now()
-    final_title = title.strip() or f"{env_b} → {env_a} · {len(names)} parámetros"
+    final_title = (alias or title).strip() or f"{env_b} → {env_a} · {len(names)} parámetros"
 
     with _connect() as conn:
         conn.execute(
@@ -173,6 +174,97 @@ def create_session(
         )
 
     return get_session(session_id)
+
+
+def add_item(
+    session_id: str,
+    name: str,
+    *,
+    service: str | None = None,
+    is_secret: bool | None = None,
+    status: str = "pendiente",
+    diff_json: str | None = None,
+    diff_err: str | None = None,
+    script: str | None = None,
+    preview: str | None = None,
+    notes: str | None = None,
+) -> dict:
+    if status not in VALID_STATUSES:
+        raise ValueError(f"status debe ser uno de: {', '.join(VALID_STATUSES)}.")
+
+    session = get_session(session_id)
+    item_name = str(name).strip()
+    if not item_name:
+        raise ValueError("El nombre del ítem no puede estar vacío.")
+
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM session_items WHERE session_id = ? AND name = ?",
+            (session_id, item_name),
+        ).fetchone()
+        if row is not None:
+            return _row_to_item(row)
+
+        final_service = (service or session["service"]).strip()
+        if final_service not in ("ssm", "secretsmanager"):
+            raise ValueError("service debe ser 'ssm' o 'secretsmanager'.")
+        position = len(session["items"])
+        conn.execute(
+            "INSERT INTO session_items "
+            "(session_id, position, name, service, is_secret, status, diff_json, diff_err, script, preview, notes, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                session_id,
+                position,
+                item_name,
+                final_service,
+                1 if is_secret else 0,
+                status,
+                diff_json,
+                diff_err,
+                script,
+                preview,
+                notes,
+                _now(),
+            ),
+        )
+        row = conn.execute(
+            "SELECT * FROM session_items WHERE session_id = ? AND name = ? ORDER BY position DESC LIMIT 1",
+            (session_id, item_name),
+        ).fetchone()
+
+    return _row_to_item(row)
+
+
+def generate_markdown_report(session_id: str) -> str:
+    session = get_session(session_id)
+    lines = [
+        f"# {session['title']}",
+        "",
+        f"- ID: `{session['id']}`",
+        f"- Ambientes: `{session['env_a']}` → `{session['env_b']}`",
+        f"- Servicio: `{session['service']}`",
+        f"- Total: `{len(session['items'])}` ítems",
+        "",
+    ]
+    for status, count in session["status_counts"].items():
+        if count:
+            lines.append(f"- {status}: {count}")
+    lines.append("")
+    if not session["items"]:
+        lines.append("Sin cambios registrados.")
+        return "\n".join(lines) + "\n"
+
+    lines.append("## Ítems")
+    for item in session["items"]:
+        lines.append(
+            f"- `{item['name']}` — `{item['status']}` — servicio `{item['service']}` | secreto `{str(item['is_secret']).lower()}`"
+        )
+        if item.get("notes"):
+            lines.append(f"  - Nota: {item['notes']}")
+        if item.get("script"):
+            lines.append(f"  - Script: `{item['script']}`")
+    return "\n".join(lines) + "\n"
 
 
 def list_sessions() -> list[dict]:

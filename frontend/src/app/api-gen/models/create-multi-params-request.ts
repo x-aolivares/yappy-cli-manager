@@ -7,6 +7,9 @@ export interface CreateMultiParamsRequest {
   dry_run?: boolean;
   envs?: Array<string>;
   name: string;
+  secret_name?: string;
+  secret_value?: string;
+  service?: string;
   value?: string;
   value_type?: string;
 }

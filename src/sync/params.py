@@ -59,6 +59,30 @@ def read_secret(cfg, name: str) -> str:
     raise ValueError(f"Secret '{name}' has no value")
 
 
+def _resolve_pair_secret(cfg, param_name: str | None, param_value: str | None):
+    """Return the Secrets Manager secret name/value used by a secret-backed SSM param.
+
+    A paired secret may be named exactly like the SSM parameter or, in the
+    newer pattern, be referenced by the SSM parameter value itself.
+    """
+    candidates: list[str] = []
+    if param_name and param_name.strip():
+        candidates.append(param_name.strip())
+    if param_value and str(param_value).strip():
+        value = str(param_value).strip()
+        if not candidates or value != candidates[0]:
+            candidates.append(value)
+
+    for candidate in dict.fromkeys(candidates):
+        try:
+            return candidate, read_secret(cfg, candidate)
+        except ParamNotFound:
+            continue
+        except Exception:  # noqa: BLE001 - invalid/binary secret should not break pairing detection
+            continue
+    return None, None
+
+
 def _shell_quote(value: str) -> str:
     return "'" + value.replace("'", "'\\''") + "'"
 
@@ -513,13 +537,16 @@ def diff_params_pair(
 
     pa = safe_read(read_parameter, cfg_a)
     pb = safe_read(read_parameter, cfg_b)
-    sa = safe_read(read_secret, cfg_a)
-    sb = safe_read(read_secret, cfg_b)
 
     param_a = pa[0] if pa else None
     param_b = pb[0] if pb else None
     type_a = pa[1] if pa else None
     type_b = pb[1] if pb else None
+
+    secret_name_a, secret_value_a = _resolve_pair_secret(cfg_a, name, param_a)
+    secret_name_b, secret_value_b = _resolve_pair_secret(cfg_b, name, param_b)
+    sa = secret_value_a
+    sb = secret_value_b
 
     param_where = where(param_a, param_b)
     secret_where = where(sa, sb)
@@ -551,12 +578,22 @@ def diff_params_pair(
         else None
     )
 
+    extra_notes = []
+    if param_a and secret_name_a and param_a == secret_name_a and secret_name_a != name:
+        extra_notes.append(
+            f"Se detectó que el valor del parámetro apunta al secreto '{secret_name_a}' en {env_a}."
+        )
+    if param_b and secret_name_b and param_b == secret_name_b and secret_name_b != name:
+        extra_notes.append(
+            f"Se detectó que el valor del parámetro apunta al secreto '{secret_name_b}' en {env_b}."
+        )
+
     if param_where == "none" and secret_where == "none":
         return ParamDiffResult(
             env_a=env_a, env_b=env_b, service="ssm", name=name,
             status="none", pair=True,
             param_status=param_status, secret_status=secret_status,
-            notes=["No existe el parámetro ni el secreto en ninguna de las dos regiones."],
+            notes=extra_notes or ["No existe el parámetro ni el secreto en ninguna de las dos regiones."],
         )
 
     missing = [w for w in ("parametro", "secreto")
@@ -600,7 +637,7 @@ def diff_params_pair(
         changes=p_changes,
         patch_value=p_patch,
         script="\n\n".join(st["command"] for st in steps) or None,
-        notes=notes,
+        notes=extra_notes + notes,
         pair=True,
         secret_value_a=sa, secret_value_b=sb,
         secret_changes=s_changes,

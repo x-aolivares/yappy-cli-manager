@@ -48,13 +48,34 @@ const STATUS_META: Record<string, [string, string]> = {
           <span class="muted">({{ pendingCount(session) }} en cola)</span>
         </p>
       }
+      <div class="panel" style="margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:space-between;">
+        <a class="primary" [href]="reportUrl()" target="_blank" rel="noreferrer" style="text-decoration:none;">Descargar reporte .md</a>
+        <div class="muted">Trackeo del cambio de la sesión</div>
+      </div>
+      <div class="panel" style="margin-top:12px; display:grid; gap:8px;">
+        <label for="session-filter">Filtrar por nombre</label>
+        <input
+          id="session-filter"
+          type="text"
+          [value]="filterText()"
+          (input)="filterText.set($any($event.target).value)"
+          placeholder="/prod/api/..."
+        />
+      </div>
+      <div class="panel" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:end;">
+        <div style="flex:1; min-width:220px;">
+          <label for="session-new-name">Agregar parámetro a la sesión</label>
+          <input id="session-new-name" type="text" [value]="newItemName()" (input)="newItemName.set($any($event.target).value)" placeholder="/prod/new/param" />
+        </div>
+        <button type="button" class="secondary" [disabled]="actBusy()" (click)="addItem()">Agregar</button>
+      </div>
       <div style="margin-top:12px;" class="panel">
         <table>
           <thead>
             <tr><th>#</th><th>Nombre</th><th>Servicio</th><th>Estado</th><th>Acciones</th></tr>
           </thead>
           <tbody>
-            @for (item of session.items; track item.name) {
+            @for (item of filteredItems(); track item.name) {
               <tr>
                 <td class="muted">{{ item.position + 1 }}</td>
                 <td><code>{{ item.name }}</code></td>
@@ -116,6 +137,8 @@ export class SessionDetailPage {
   readonly busy = signal(false);
   readonly actBusy = signal(false);
   readonly error = signal<string | null>(null);
+  readonly filterText = signal('');
+  readonly newItemName = signal('');
 
   constructor() {
     effect(() => {
@@ -170,6 +193,35 @@ export class SessionDetailPage {
     return session.items.filter((i) => i.status === 'pendiente').length;
   }
 
+  filteredItems(): SessionItemInfo[] {
+    const session = this.session();
+    if (!session) return [];
+    const q = this.filterText().trim().toLowerCase();
+    if (!q) return session.items;
+    return session.items.filter((item) => item.name.toLowerCase().includes(q));
+  }
+
+  addItem() {
+    const id = this.sessionId();
+    const name = this.newItemName().trim();
+    if (!id || !name) return;
+    this.actBusy.set(true);
+    this.error.set(null);
+    this.sessionService
+      .createItem(id, { name, status: 'pendiente', service: this.session()?.service || 'ssm' })
+      .then(
+        () => {
+          this.actBusy.set(false);
+          this.newItemName.set('');
+          void this.load(id);
+        },
+        (err) => {
+          this.actBusy.set(false);
+          this.error.set(toApiError(err).message);
+        },
+      );
+  }
+
   nextItem(session: SessionDetailResponse): SessionItemInfo | null {
     return session.items.find((i) => i.status === 'pendiente') ?? null;
   }
@@ -196,6 +248,11 @@ export class SessionDetailPage {
     if (item.script) parts.push(`Comando:\n${item.script}`);
     if (item.preview) parts.push(`Valor a aplicar:\n${item.preview}`);
     return parts.join('\n\n');
+  }
+
+  reportUrl(): string {
+    const id = this.sessionId();
+    return id ? `/api/sessions/${encodeURIComponent(id)}/report.md` : '#';
   }
 
   protected readonly fmtDate = fmtDate;

@@ -440,6 +440,25 @@ def test_diff_params_pair_none_nowhere(monkeypatch):
     assert result.status == "none"
 
 
+def test_diff_params_pair_detects_secret_reference_in_parameter_value(monkeypatch):
+    _pair_reads(
+        monkeypatch,
+        param_a="/prod/secret/db-password",
+        param_b="/prod/secret/db-password-qa",
+        secret_a="legacy-secret-a",
+        secret_b="legacy-secret-b",
+    )
+    result = p.diff_params_pair(
+        _PairCfg("a"), _PairCfg("b"), "/prod/network/ecs/cluster_name", "a", "b"
+    )
+
+    assert result.pair is True
+    assert result.status == "different"
+    assert result.secret_needs_write is True
+    assert result.param_apply == "/prod/secret/db-password-qa"
+    assert result.secret_apply == "legacy-secret-b"
+
+
 def test_diff_params_pair_json_param_uses_patch(monkeypatch):
     import json
 

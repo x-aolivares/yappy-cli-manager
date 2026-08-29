@@ -123,10 +123,30 @@ function itemsTable(session, items) {
   </div>`;
 }
 
-function renderDetail(session) {
+function addSessionItem(sessionId, name, options = {}) {
+  const raw = (name || "").trim();
+  if (!raw) throw new Error("Ingresá el nombre del parámetro a agregar.");
+  return fetch("/api/sessions/" + encodeURIComponent(sessionId) + "/items/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: raw,
+      service: options.service || "ssm",
+      is_secret: Boolean(options.is_secret),
+      status: options.status || "pendiente",
+    }),
+  }).then(async (res) => {
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
+    return body;
+  });
+}
+
+function renderDetail(session, query = "") {
   const total = session.items.length;
   const pending = session.items.filter((i) => i.status === "pendiente");
   const next = pending[0];
+  const filterValue = escapeHtml(query);
   view.innerHTML = `
     <a href="/sessions" class="muted" style="text-decoration:none;">← Sesiones</a>
     <h1>${escapeHtml(session.title)}</h1>
@@ -135,24 +155,63 @@ function renderDetail(session) {
       creada ${fmtDate(session.created_at)} · ${total} parámetros
     </p>
     <div class="panel">${progressBar(session.status_counts, total)}</div>
+    <div class="panel" style="margin-top:12px; display:grid; gap:8px;">
+      <label for="session-filter">Filtrar por nombre</label>
+      <input id="session-filter" type="text" value="${filterValue}" placeholder="/prod/api/..." />
+    </div>
+    <div class="panel" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:end;">
+      <div style="flex:1; min-width:220px;">
+        <label for="session-new-name">Agregar parámetro a la sesión</label>
+        <input id="session-new-name" type="text" placeholder="/prod/new/param" />
+      </div>
+      <button id="session-add-item" class="secondary">Agregar</button>
+    </div>
     ${next ? `<p style="margin-top:12px;"><a class="primary" style="text-decoration:none;" href="${openInDiff(next, session)}">Siguiente pendiente →</a> <span class="muted">(${pending.length} en cola)</span></p>` : ""}
     <div style="margin-top:12px;">${itemsTable(session, session.items)}</div>`;
+
+  const filterInput = document.getElementById("session-filter");
+  if (filterInput) {
+    filterInput.addEventListener("input", (event) => {
+      const value = event.target.value.trim();
+      loadDetail(session.id, value);
+    });
+  }
+
+  const addBtn = document.getElementById("session-add-item");
+  if (addBtn) {
+    addBtn.addEventListener("click", async () => {
+      const nameInput = document.getElementById("session-new-name");
+      try {
+        await addSessionItem(session.id, nameInput ? nameInput.value : "", { service: session.service || "ssm" });
+        await loadDetail(session.id, filterInput ? filterInput.value : "");
+      } catch (e) {
+        view.insertAdjacentHTML(
+          "afterbegin",
+          `<div class="error-box">${escapeHtml(e.message)}</div>`,
+        );
+      }
+    });
+  }
 }
 
-async function loadDetail(sessionId) {
+async function loadDetail(sessionId, filterQuery = "") {
   try {
-    const res = await fetch("/api/sessions/" + encodeURIComponent(sessionId));
+    const url = new URL("/api/sessions/" + encodeURIComponent(sessionId), window.location.origin);
+    if (filterQuery && filterQuery.trim()) {
+      url.searchParams.set("filter", filterQuery.trim());
+    }
+    const res = await fetch(url.toString());
     const body = await res.json();
     if (!res.ok) throw new Error(body.detail || "HTTP " + res.status);
     const session = body;
-    renderDetail(session);
+    renderDetail(session, filterQuery);
 
     view.querySelectorAll("button[data-act]").forEach((btn) =>
       btn.addEventListener("click", async () => {
         btn.disabled = true;
         try {
           await setItemStatus(sessionId, btn.dataset.name, btn.dataset.act);
-          await loadDetail(sessionId);
+          await loadDetail(sessionId, filterQuery);
         } catch (e) {
           btn.disabled = false;
           view.insertAdjacentHTML(

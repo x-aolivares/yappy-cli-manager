@@ -12,63 +12,14 @@ import { CopyButton } from '../shared/copy-button';
   template: `
     <h1>Crear / Actualizar en múltiples regiones</h1>
     <p class="muted">
-      Un solo valor, varias regiones. Sin marcar la opción de secreto, es un
-      parámetro de SSM (o lo actualizás si ya existe). Marcando
-      <strong>"Crear también en Secrets Manager"</strong>, por cada región se crea/actualiza el
-      secreto <em>y</em> además se escribe el parámetro SSM como <code>SecureString</code>.
-      "Ver comandos" genera los comandos por región (sin tocar nada); "Crear en las regiones" los
-      ejecuta <strong>con tus credenciales y solo tras tu confirmación</strong>.
+      Un solo valor, varias regiones. En <strong>SSM + secreto asociado</strong> solo pedimos
+      <em>3 valores</em>: nombre del parámetro, nombre del secreto y valor del secreto; el valor del
+      parámetro se guarda automáticamente igual al nombre del secreto. Cuando no es ese modo,
+      el flujo normal es parámetro SSM o secreto aislado.
     </p>
 
     <div class="panel">
-      <label for="name">Nombre del parámetro / secreto</label>
-      <input
-        id="name"
-        type="text"
-        [value]="name()"
-        (input)="name.set($any($event.target).value)"
-        placeholder="/yappy/dev/config"
-        spellcheck="false"
-        style="max-width: 420px;"
-      />
-
-      <label for="value" style="margin-top:16px;">Valor</label>
-      <textarea
-        id="value"
-        class="change-input"
-        rows="4"
-        spellcheck="false"
-        [value]="value()"
-        (input)="value.set($any($event.target).value)"
-        placeholder='{"rate": 20}'
-      ></textarea>
-
-      <label class="chk" style="margin-top:16px;">
-        <input
-          type="checkbox"
-          [checked]="createSecret()"
-          (change)="createSecret.set($any($event.target).checked)"
-        />
-        Crear también el secreto en Secrets Manager
-      </label>
-
-      <div style="margin-top:16px;">
-        <label for="value-type">Tipo del parámetro SSM</label>
-        <select
-          id="value-type"
-          style="max-width: 260px;"
-          [disabled]="withSecret()"
-          [value]="valueType()"
-          (change)="valueType.set($any($event.target).value)"
-          title="Con secreto, el parámetro se escribe como SecureString"
-        >
-          <option value="String">String</option>
-          <option value="StringList">StringList</option>
-          <option value="SecureString">SecureString</option>
-        </select>
-      </div>
-
-      <label style="margin-top:16px;">Regiones destino</label>
+      <label style="margin-top:0;">Regiones destino</label>
       <div class="env-checks">
         @for (e of environments() ?? []; track e.env) {
           <label class="env-check">
@@ -87,6 +38,103 @@ import { CopyButton } from '../shared/copy-button';
       </div>
       @if (envLoadError()) {
         <span class="muted">No se pudieron cargar los ambientes: {{ envLoadError() }}</span>
+      }
+
+      <div style="margin-top:16px; margin-bottom:16px;">
+        <label for="service-mode">Servicio objetivo</label>
+        <select
+          id="service-mode"
+          style="max-width: 26rem;"
+          [value]="serviceMode()"
+          (change)="serviceMode.set($any($event.target).value)"
+        >
+          <option value="ssm">SSM Parameter Store</option>
+          <option value="secretsmanager">Secrets Manager</option>
+          <option value="ssm+secret">SSM + secreto asociado</option>
+        </select>
+      </div>
+
+      <label for="name">
+        {{ serviceMode() === 'secretsmanager' ? 'Nombre del secreto' : 'Nombre del parámetro' }}
+      </label>
+      <input
+        id="name"
+        type="text"
+        [value]="name()"
+        (input)="name.set($any($event.target).value)"
+        [placeholder]="serviceMode() === 'secretsmanager' ? '/yappy/dev/secret/db-password' : '/yappy/dev/config'"
+        spellcheck="false"
+        style="max-width: 26rem;"
+      />
+
+      @if (serviceMode() === 'ssm+secret' || (serviceMode() === 'ssm' && createSecret())) {
+        <label for="secret-name" style="margin-top:16px;">Nombre del secreto asociado</label>
+        <input
+          id="secret-name"
+          type="text"
+          [value]="secretName()"
+          (input)="secretName.set($any($event.target).value)"
+          placeholder="db-pass-xd-aws"
+          spellcheck="false"
+          style="max-width: 26rem;"
+        />
+      }
+
+      @if (serviceMode() === 'ssm' && !createSecret() || serviceMode() === 'secretsmanager') {
+        <label for="value" style="margin-top:16px;">
+          {{ serviceMode() === 'secretsmanager' ? 'Valor del secreto' : 'Valor del parámetro' }}
+        </label>
+        <textarea
+          id="value"
+          class="change-input"
+          rows="4"
+          spellcheck="false"
+          [value]="value()"
+          (input)="value.set($any($event.target).value)"
+          [placeholder]="serviceMode() === 'secretsmanager' ? 'super-secret-value' : 'valor del parámetro'"
+        ></textarea>
+      }
+
+      @if (serviceMode() === 'ssm+secret' || (serviceMode() === 'ssm' && createSecret())) {
+        <label for="secret-value" style="margin-top:16px;">Valor del secreto</label>
+        <textarea
+          id="secret-value"
+          class="change-input"
+          rows="4"
+          spellcheck="false"
+          [value]="secretValue()"
+          (input)="secretValue.set($any($event.target).value)"
+          placeholder="12lj1242&jk4%"
+        ></textarea>
+      }
+
+      @if (serviceMode() === 'ssm') {
+        <label class="chk" style="margin-top:16px;">
+          <input
+            type="checkbox"
+            [checked]="createSecret()"
+            (change)="createSecret.set($any($event.target).checked)"
+          />
+          Este parámetro almacena un secreto
+        </label>
+      }
+
+      @if (serviceMode() === 'ssm' && !createSecret()) {
+        <div style="margin-top:16px;">
+          <label for="value-type">Tipo del parámetro SSM</label>
+          <select
+            id="value-type"
+            style="max-width: 16rem;"
+            [disabled]="withSecret()"
+            [value]="valueType()"
+            (change)="valueType.set($any($event.target).value)"
+            title="Con secreto, el parámetro se escribe como SecureString"
+          >
+            <option value="String">String</option>
+            <option value="StringList">StringList</option>
+            <option value="SecureString">SecureString</option>
+          </select>
+        </div>
       }
 
       <div class="actions" style="justify-content:flex-end; margin-top:10px;">
@@ -169,8 +217,11 @@ export class ParamsCreatePage {
 
   readonly environments = signal<EnvironmentInfo[] | null>(null);
   readonly envLoadError = signal<string | null>(null);
+  readonly serviceMode = signal<'ssm' | 'secretsmanager' | 'ssm+secret'>('ssm');
   readonly name = signal('');
   readonly value = signal('');
+  readonly secretName = signal('');
+  readonly secretValue = signal('');
   readonly valueType = signal<string>('String');
   readonly createSecret = signal(false);
   readonly envsSelected = signal<Record<string, boolean>>({});
@@ -180,7 +231,7 @@ export class ParamsCreatePage {
   readonly error = signal<string | null>(null);
   readonly result = signal<ParamsMultiResponse | null>(null);
 
-  readonly withSecret = computed(() => this.createSecret());
+  readonly withSecret = computed(() => this.createSecret() || this.serviceMode() === 'ssm+secret');
 
   constructor() {
     this.envService.list().then(
@@ -194,14 +245,26 @@ export class ParamsCreatePage {
   }
 
   private bundle(dryRun: boolean) {
+    const mode = this.serviceMode();
+    const paramName = this.name().trim();
+    const secretName = this.secretName().trim() || paramName;
+    const pairedMode = mode === 'ssm+secret' || (mode === 'ssm' && this.createSecret());
+    const paramValue = pairedMode ? secretName : this.value();
+    const secretValue = this.secretValue() || paramValue;
+    const createSecret = pairedMode || mode === 'secretsmanager';
+    const effectiveService = mode === 'secretsmanager' ? 'secretsmanager' : pairedMode ? 'ssm+secret' : 'ssm';
+
     return {
-      name: this.name().trim(),
-      value: this.value(),
-      value_type: this.withSecret() ? 'SecureString' : this.valueType(),
+      name: paramName,
+      value: paramValue,
+      value_type: mode === 'secretsmanager' ? 'SecureString' : pairedMode ? 'SecureString' : this.valueType(),
+      service: effectiveService,
+      secret_name: pairedMode || mode === 'secretsmanager' ? secretName : '',
+      secret_value: pairedMode || mode === 'secretsmanager' ? secretValue : '',
       envs: Object.entries(this.envsSelected())
         .filter(([, on]) => on)
         .map(([env]) => env),
-      create_secret: this.withSecret(),
+      create_secret: createSecret,
       dry_run: dryRun,
       confirm: !dryRun,
     };
@@ -209,8 +272,18 @@ export class ParamsCreatePage {
 
   run(dryRun: boolean) {
     const p = this.bundle(dryRun);
+    const mode = this.serviceMode();
     if (!p.name) {
-      this.error.set('Ingresá el nombre del parámetro.');
+      this.error.set(mode === 'secretsmanager' ? 'Ingresá el nombre del secreto.' : 'Ingresá el nombre del parámetro.');
+      return;
+    }
+    const pairedMode = mode === 'ssm+secret' || (mode === 'ssm' && this.createSecret());
+    if (pairedMode && !this.secretName().trim()) {
+      this.error.set('Ingresá el nombre del secreto asociado.');
+      return;
+    }
+    if (pairedMode && !this.secretValue().trim()) {
+      this.error.set('Ingresá el valor del secreto asociado.');
       return;
     }
     if (!p.envs.length) {
@@ -219,9 +292,12 @@ export class ParamsCreatePage {
     }
     if (!dryRun) {
       const secret = this.withSecret();
-      const ops = secret
-        ? 'crear/actualizar el secreto en Secrets Manager Y el parámetro SSM (SecureString)'
-        : 'ejecutar put-parameter';
+      const ops =
+        mode === 'secretsmanager'
+          ? 'crear/actualizar el secreto en Secrets Manager'
+          : secret
+            ? 'crear/actualizar el secreto en Secrets Manager Y el parámetro SSM (SecureString)'
+            : 'ejecutar put-parameter';
       if (!confirm(`¿${ops} de ${p.name} en: ${p.envs.join(', ')}?\nCada región usa su profile/región configurados.`)) {
         return;
       }

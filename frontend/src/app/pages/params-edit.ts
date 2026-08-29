@@ -13,7 +13,9 @@ import { EnvSelectComponent } from '../shared/env-select';
     <p class="muted">
       Elegís un ambiente y un nombre: el valor se lee (con decodificación si es
       <code>SecureString</code>), lo editás y lo guardás con <strong>tu confirmación</strong>.
-      Si no existe el parámetro, podés crearlo desde acá (overwrite).
+      Si no existe el parámetro, podés crearlo desde acá (overwrite). Si el parámetro
+      guarda un secreto, marcá <strong>"Este parámetro almacena un secreto"</strong> y
+      completá el nombre y valor del secreto; el valor del parámetro se guarda como el nombre del secreto.
     </p>
 
     <div class="panel">
@@ -51,29 +53,68 @@ import { EnvSelectComponent } from '../shared/env-select';
           <strong>Valor actual</strong>
           <span class="muted">{{ env() }} — {{ valueType() }}</span>
         </div>
-        <textarea
-          id="value"
-          class="change-input"
-          rows="6"
-          spellcheck="false"
-          style="max-height:none; min-height:120px; white-space:pre-wrap;"
-          [value]="value()"
-          (input)="value.set($any($event.target).value)"
-        ></textarea>
 
-        <div style="margin-top:16px;">
-          <label for="value-type">Tipo</label>
-          <select
-            id="value-type"
-            style="max-width: 260px;"
-            [value]="valueType()"
-            (change)="valueType.set($any($event.target).value)"
-          >
-            <option value="String">String</option>
-            <option value="StringList">StringList</option>
-            <option value="SecureString">SecureString</option>
-          </select>
-        </div>
+        <label class="chk" style="margin-top:0;">
+          <input
+            type="checkbox"
+            [checked]="secretBacked()"
+            (change)="secretBacked.set($any($event.target).checked)"
+          />
+          Este parámetro almacena un secreto
+        </label>
+
+        @if (!secretBacked()) {
+          <textarea
+            id="value"
+            class="change-input"
+            rows="6"
+            spellcheck="false"
+            style="max-height:none; min-height:120px; white-space:pre-wrap;"
+            [value]="value()"
+            (input)="value.set($any($event.target).value)"
+          ></textarea>
+
+          <div style="margin-top:16px;">
+            <label for="value-type">Tipo</label>
+            <select
+              id="value-type"
+              style="max-width: 260px;"
+              [value]="valueType()"
+              (change)="valueType.set($any($event.target).value)"
+            >
+              <option value="String">String</option>
+              <option value="StringList">StringList</option>
+              <option value="SecureString">SecureString</option>
+            </select>
+          </div>
+        } @else {
+          <div style="display:grid; gap:16px; margin-top:16px;">
+            <div>
+              <label for="secret-name">Nombre del secreto</label>
+              <input
+                id="secret-name"
+                type="text"
+                [value]="secretName()"
+                (input)="secretName.set($any($event.target).value)"
+                placeholder="db-pass-xd-aws"
+                spellcheck="false"
+                style="max-width: 420px;"
+              />
+            </div>
+            <div>
+              <label for="secret-value">Valor del secreto</label>
+              <textarea
+                id="secret-value"
+                class="change-input"
+                rows="4"
+                spellcheck="false"
+                [value]="secretValue()"
+                (input)="secretValue.set($any($event.target).value)"
+                placeholder="12lj1242&jk4%"
+              ></textarea>
+            </div>
+          </div>
+        }
 
         <div class="actions" style="justify-content:flex-end; margin-top:10px;">
           <button type="button" [disabled]="busy()" (click)="save()">Guardar</button>
@@ -98,6 +139,9 @@ export class ParamsEditPage {
   readonly name = signal('');
   readonly value = signal('');
   readonly valueType = signal('String');
+  readonly secretBacked = signal(false);
+  readonly secretName = signal('');
+  readonly secretValue = signal('');
   readonly loaded = signal(false);
 
   readonly busy = signal(false);
@@ -145,7 +189,25 @@ export class ParamsEditPage {
       this.error.set('Ingresá el nombre del parámetro.');
       return;
     }
-    if (!confirm(`¿Guardar ${name} en ${env}? (put-parameter, overwrite)\nCada región usa su profile/región configurados.`)) {
+
+    const secretBacked = this.secretBacked();
+    const secretName = this.secretName().trim();
+    const secretValue = this.secretValue().trim();
+    if (secretBacked) {
+      if (!secretName) {
+        this.error.set('Ingresá el nombre del secreto.');
+        return;
+      }
+      if (!secretValue) {
+        this.error.set('Ingresá el valor del secreto.');
+        return;
+      }
+    }
+
+    const confirmText = secretBacked
+      ? `¿Guardar ${name} en ${env} y crear/actualizar el secreto ${secretName}?\nEl valor del parámetro se escribirá como el nombre del secreto.`
+      : `¿Guardar ${name} en ${env}? (put-parameter, overwrite)\nCada región usa su profile/región configurados.`;
+    if (!confirm(confirmText)) {
       return;
     }
 
@@ -155,9 +217,12 @@ export class ParamsEditPage {
     this.paramsService
       .multi({
         name,
-        value: this.value(),
-        value_type: this.valueType(),
+        value: secretBacked ? secretName : this.value(),
+        value_type: secretBacked ? 'SecureString' : this.valueType(),
+        secret_name: secretBacked ? secretName : '',
+        secret_value: secretBacked ? secretValue : '',
         envs: [env],
+        create_secret: secretBacked,
         dry_run: false,
         confirm: true,
       })

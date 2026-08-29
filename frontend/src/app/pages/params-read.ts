@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { EnvironmentInfo, ParamsReadResponse, ReadEntryResultInfo } from '../api-gen/models';
 import { EnvironmentService } from '../core/services/environment.service';
 import { ParamsService } from '../core/services/params.service';
@@ -29,6 +29,14 @@ import { StatusBadge } from '../shared/status-badge';
         [(envB)]="envB"
         [(envA)]="envA"
         [(service)]="service"
+      />
+      <label for="session-alias">Alias o nombre de la iniciativa</label>
+      <input
+        id="session-alias"
+        type="text"
+        [value]="sessionAlias()"
+        (input)="sessionAlias.set($any($event.target).value)"
+        placeholder="release/REP-325073"
       />
       <label for="entries">Lista de parámetros</label>
       <textarea
@@ -116,10 +124,13 @@ export class ParamsReadPage {
   private readonly paramsService = inject(ParamsService);
   private readonly sessionService = inject(SessionService);
 
+  private readonly router = inject(Router);
+
   readonly environments = signal<EnvironmentInfo[] | null>(null);
   readonly envB = signal('');
   readonly envA = signal('');
   readonly service = signal<string>('ssm');
+  readonly sessionAlias = signal('');
   readonly entries = signal('');
 
   readonly busy = signal(false);
@@ -217,16 +228,23 @@ export class ParamsReadPage {
       .map((e) => (typeof e === 'string' ? e : (e as { key?: string; name?: string }).key || (e as { name?: string }).name || ''))
       .filter((k) => k !== '');
     if (!keys.length) return;
+    const alias = this.sessionAlias().trim();
+    const payload = {
+      env_a: envA,
+      env_b: envB,
+      service: this.service(),
+      keys,
+      alias,
+      title: alias,
+      reuse: true,
+    };
     this.sessionService
-      .create({
-        env_a: envA,
-        env_b: envB,
-        service: this.service(),
-        keys,
-        reuse: true,
-      })
+      .create(payload)
       .then(
-        (body) => this.sessionCreated.set({ title: body.title, id: body.id }),
+        (body) => {
+          this.sessionCreated.set({ title: body.title, id: body.id });
+          this.router.navigate(['/sessions', body.id]);
+        },
         () => null,
       );
   }

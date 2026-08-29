@@ -74,8 +74,8 @@ type PairKey = 'param' | 'secret';
               [checked]="withSecret()"
               (change)="withSecret.set($any($event.target).checked)"
             />
-            Es un secreto
-            <span class="muted" style="font-size:12px;">(parámetro + secreto emparejado en Secrets Manager)</span>
+            Este parámetro almacena un secreto
+            <span class="muted" style="font-size:12px;">(SSM + secreto emparejado en Secrets Manager)</span>
           </label>
         }
         <label class="chk">
