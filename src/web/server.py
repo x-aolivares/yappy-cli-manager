@@ -37,6 +37,7 @@ _PAGES = {
     "/db-diff": "db-diff.html",
     "/params-diff": "params-diff.html",
     "/params-read": "params-read.html",
+    "/params-create": "params-create.html",
     "/compile": "compile.html",
 }
 
@@ -82,6 +83,15 @@ class ExecuteParamsRequest(BaseModel):
     name: str
     new_value: str = ""
     value_type: str = "String"
+    confirm: bool = False
+
+
+class CreateMultiParamsRequest(BaseModel):
+    name: str
+    value: str = ""
+    value_type: str = "String"
+    envs: list[str] = []
+    dry_run: bool = False
     confirm: bool = False
 
 
@@ -319,6 +329,54 @@ def api_params_apply_execute(req: ExecuteParamsRequest):
         "service": req.service,
         "op": req.op,
         "name": req.name,
+    }
+
+
+@app.post("/api/params/multi")
+def api_params_multi(req: CreateMultiParamsRequest):
+    if not req.name or not req.name.strip():
+        raise HTTPException(status_code=400, detail="Ingresá el nombre del parámetro.")
+    if not req.envs:
+        raise HTTPException(status_code=400, detail="Elegí al menos una región destino.")
+    if req.value_type not in ("String", "StringList", "SecureString"):
+        raise HTTPException(
+            status_code=400,
+            detail="value_type debe ser String, StringList o SecureString.",
+        )
+    if not req.dry_run and not req.confirm:
+        raise HTTPException(status_code=400, detail="Se requiere confirmación explícita para ejecutar.")
+
+    results = []
+    for env in req.envs:
+        try:
+            cfg = _env_cfg(env)
+        except HTTPException as exc:
+            results.append({"env": env, "ok": False, "error": str(exc.detail)})
+            continue
+        try:
+            if req.dry_run:
+                results.append(
+                    {
+                        "env": env,
+                        "ok": True,
+                        "script": p.build_ssm_script(
+                            req.name, req.value, req.value_type, cfg
+                        ),
+                    }
+                )
+            else:
+                r = p.put_parameter(cfg, req.name, req.value, req.value_type)
+                results.append({"env": env, "ok": True, "message": r["message"]})
+        except Exception as exc:
+            results.append({"env": env, "ok": False, "error": f"Error de ejecución: {exc}"})
+
+    return {
+        "name": req.name,
+        "value_type": req.value_type,
+        "dry_run": req.dry_run,
+        "results": results,
+        "ok_count": sum(1 for r in results if r["ok"]),
+        "err_count": sum(1 for r in results if not r["ok"]),
     }
 
 

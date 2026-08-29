@@ -17,6 +17,7 @@
       <a href="/db-diff">DB Diff</a>
       <a href="/params-diff">Parámetros</a>
       <a href="/params-read">Leer Parámetros</a>
+      <a href="/params-create">Crear Parámetro</a>
       <a href="/compile">Compilar</a>
     </nav>
   </header>
@@ -50,6 +51,14 @@
           Pegás una lista de parámetros como JSON — <code>[{ "key": "/path", "is_secret": false }]</code> —
           y ves los valores de una. Si marcás <code>is_secret: true</code> los lee de Secrets Manager;
           el resto, de SSM.
+        </p>
+      </a>
+      <a class="card" href="/params-create">
+        <h2>Crear Parámetro en varias regiones</h2>
+        <p>
+          Un valor, varias regiones: genera el <code>aws ssm put-parameter</code> por región
+          (para copiar) o ejecútalo directo contra todas con tus credenciales y confirmación
+          explícita.
         </p>
       </a>
       <a class="card" href="/compile">

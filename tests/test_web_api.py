@@ -10,8 +10,10 @@ from src.web.server import (
     api_params_apply,
     api_params_apply_execute,
     api_params_diff,
+    api_params_multi,
     api_params_read,
     ApplyParamsRequest,
+    CreateMultiParamsRequest,
     DbDiffRequest,
     ExecuteParamsRequest,
     ParamsDiffRequest,
@@ -280,6 +282,88 @@ def test_api_params_apply_execute_delete_forwards_to_ssm(monkeypatch):
     )
     assert captured == {"cfg_env": "qa", "name": "/x"}
     assert payload["op"] == "delete"
+
+
+def test_api_params_multi_dry_run_generates_scripts(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    captured = []
+    monkeypatch.setattr(
+        p, "build_ssm_script",
+        lambda name, value, value_type, cfg: captured.append(
+            (name, value, value_type, cfg._env)
+        )
+        or f"aws ssm put-parameter --name '{name}' --type {value_type}",
+    )
+
+    payload = api_params_multi(
+        CreateMultiParamsRequest(
+            name="/x", value='{"a": 1}', value_type="SecureString",
+            envs=["dev", "qa"], dry_run=True,
+        )
+    )
+
+    assert payload["dry_run"] is True
+    assert payload["ok_count"] == 2
+    assert len(captured) == 2
+    assert set(e[3] for e in captured) == {"dev", "qa"}
+    assert all("--type SecureString" in r["script"] for r in payload["results"])
+
+
+def test_api_params_multi_execute_requires_confirmation(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_params_multi(
+            CreateMultiParamsRequest(name="/x", envs=["dev"], confirm=False)
+        )
+    assert exc_info.value.status_code == 400
+    assert "confirmación" in str(exc_info.value.detail)
+
+
+def test_api_params_multi_execute_per_env_keeps_errors_isolated(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
+    )
+    monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
+
+    def fake_put(cfg, name, value, value_type):
+        if cfg._env == "qa":
+            raise RuntimeError("boom")
+        return {"ok": True, "message": "ok " + cfg._env}
+
+    monkeypatch.setattr(p, "put_parameter", fake_put)
+
+    payload = api_params_multi(
+        CreateMultiParamsRequest(
+            name="/x", value="20", envs=["dev", "qa"], confirm=True
+        )
+    )
+
+    by_env = {r["env"]: r for r in payload["results"]}
+    assert by_env["dev"]["ok"] is True
+    assert by_env["dev"]["message"] == "ok dev"
+    assert by_env["qa"]["ok"] is False
+    assert "boom" in by_env["qa"]["error"]
+    assert payload["ok_count"] == 1
+    assert payload["err_count"] == 1
+
+
+def test_api_params_multi_empty_envs_returns_400(monkeypatch):
+    monkeypatch.setattr(
+        Config, "known_environments", classmethod(lambda cls: ["dev"])
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        api_params_multi(CreateMultiParamsRequest(name="/x", envs=[], dry_run=True))
+    assert exc_info.value.status_code == 400
+    assert "al menos una región" in str(exc_info.value.detail)
 
 
 class _FakeConn:
