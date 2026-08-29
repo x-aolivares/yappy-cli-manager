@@ -4,20 +4,20 @@ from fastapi import HTTPException
 from src.config import Config
 from src.sync import db_objects as obj
 from src.sync import params as p
-from src.web.server import (
-    api_envs,
-    api_db_diff,
-    api_params_apply,
-    api_params_apply_execute,
-    api_params_diff,
-    api_params_get,
-    api_params_multi,
-    api_params_read,
-    api_sessions_create,
-    api_sessions_delete,
-    api_sessions_get,
-    api_sessions_item_update,
-    api_sessions_list,
+from src.web.api.db import api_db_diff
+from src.web.api.envs import api_envs
+from src.web.api.params import api_params_apply
+from src.web.api.params import api_params_apply_execute
+from src.web.api.params import api_params_diff
+from src.web.api.params import api_params_get
+from src.web.api.params import api_params_multi
+from src.web.api.params import api_params_read
+from src.web.api.sessions import api_sessions_create
+from src.web.api.sessions import api_sessions_delete
+from src.web.api.sessions import api_sessions_get
+from src.web.api.sessions import api_sessions_item_update
+from src.web.api.sessions import api_sessions_list
+from src.web.schemas import (
     ApplyParamsRequest,
     CreateMultiParamsRequest,
     CreateSessionRequest,
@@ -777,7 +777,7 @@ def test_api_db_diff_missing_in_b_respects_include_deletes(monkeypatch):
         Config, "known_environments", classmethod(lambda cls: ["dev", "qa"])
     )
     monkeypatch.setattr(Config, "with_env", staticmethod(lambda env: _FakeConfig(env)))
-    monkeypatch.setattr("src.web.server.connect", _fake_connect)
+    monkeypatch.setattr("src.web.api.db.connect", _fake_connect)
     monkeypatch.setattr(obj, "show_create_table",
                         lambda conn, schema, name: (
                             "CREATE TABLE ..." if conn.env == "dev" else None

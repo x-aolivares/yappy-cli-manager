@@ -121,7 +121,7 @@ def web(
     ),
 ):
     """Abrir la web de Region Sync (diff de DB y de parámetros/secretos entre ambientes)."""
-    from .web.server import run
+    from .web.run import run
 
     run(port=port, open_browser=not no_browser)
 
