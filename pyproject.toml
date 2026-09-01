@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yappy-cli-manager"
-version = "1.5.2"
+version = "1.6.0"
 description = "Yappy CLI Manager - orquestador de sesiones AWS, SSM, RDS, Kafka y port-forwarding"
 requires-python = ">=3.14"
 dynamic = ["dependencies", "optional-dependencies"]
@@ -14,10 +14,10 @@ dependencies = {file = ["docs/requirements.txt"]}
 optional-dependencies = {dev = {file = ["docs/requirements-dev.txt"]}}
 
 [project.scripts]
-yappy = "src.cli:app"
+yappy = "yappy_cli.cli:app"
 
 [tool.setuptools.packages.find]
-include = ["src*"]
+include = ["yappy_cli*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
